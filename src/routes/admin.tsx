@@ -3,7 +3,7 @@ import { useUser } from '@clerk/clerk-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { client } from '@/orpc/client'
+import { getSongs, deleteSong, clearQueue } from '@/server/songs'
 import { Trash2, X } from 'lucide-react'
 
 export const Route = createFileRoute('/admin')({
@@ -17,19 +17,19 @@ function AdminPage() {
 
   const { data: songs = [], isLoading } = useQuery({
     queryKey: ['songs'],
-    queryFn: () => client.songs.getSongs(),
+    queryFn: () => getSongs(),
     enabled: isSignedIn === true,
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => client.songs.deleteSong({ id }),
+    mutationFn: (id: number) => deleteSong({ data: id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['songs'] })
     },
   })
 
   const clearMutation = useMutation({
-    mutationFn: () => client.songs.clearQueue(),
+    mutationFn: () => clearQueue(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['songs'] })
     },

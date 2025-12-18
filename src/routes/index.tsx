@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { client } from '@/orpc/client'
+import { getSongs, submitSong } from '@/server/songs'
 import { Music } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
@@ -18,12 +18,11 @@ function App() {
 
   const { data: songs = [], isLoading } = useQuery({
     queryKey: ['songs'],
-    queryFn: () => client.songs.getSongs(),
+    queryFn: () => getSongs(),
   })
 
   const submitMutation = useMutation({
-    mutationFn: (data: { title: string; artist: string }) =>
-      client.songs.submitSong(data),
+    mutationFn: (data: { title: string; artist: string }) => submitSong({ data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['songs'] })
       setTitle('')
