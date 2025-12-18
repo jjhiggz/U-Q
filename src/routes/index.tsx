@@ -161,19 +161,25 @@ function App() {
             </div>
           ) : (
             <div className="space-y-2">
-              {songs.map((song: { id: number; title: string; artist: string; submittedAt: Date | string }) => (
+              {songs.map((song: { id: number; title: string; artist: string; submittedAt: Date | string; points: number }) => (
                 <div
                   key={song.id}
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
                 >
-                  <div>
+                  <div className="flex-1">
                     <div className="font-medium">{song.title}</div>
                     <div className="text-sm text-muted-foreground">
                       {song.artist}
                     </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(song.submittedAt).toLocaleTimeString()}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 rounded-full">
+                      <Sparkles className="w-3 h-3 text-purple-500" />
+                      <span className="text-xs font-medium text-purple-600">{song.points}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(song.submittedAt).toLocaleTimeString()}
+                    </div>
                   </div>
                 </div>
               ))}

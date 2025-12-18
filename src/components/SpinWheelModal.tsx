@@ -14,6 +14,7 @@ interface Song {
   id: number
   title: string
   artist: string
+  points: number
 }
 
 interface SpinWheelModalProps {
@@ -80,7 +81,7 @@ export function SpinWheelModal({
           <DialogDescription>
             {showResult
               ? 'We have a winner!'
-              : 'Randomly select a song from the queue'}
+              : 'Songs with more points have bigger slices!'}
           </DialogDescription>
         </DialogHeader>
 
@@ -95,6 +96,9 @@ export function SpinWheelModal({
                 </h3>
                 <p className="text-lg text-muted-foreground">
                   by {winner.artist}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {winner.points} point{winner.points !== 1 ? 's' : ''}
                 </p>
               </div>
 

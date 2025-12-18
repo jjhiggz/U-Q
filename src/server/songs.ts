@@ -1,10 +1,10 @@
 import { createServerFn } from '@tanstack/react-start'
 import { db } from '@/db'
 import { songs } from '@/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, sql } from 'drizzle-orm'
 
 export const getSongs = createServerFn().handler(async () => {
-  return await db.select().from(songs).orderBy(desc(songs.submittedAt))
+  return await db.select().from(songs).orderBy(desc(songs.points), desc(songs.submittedAt))
 })
 
 export const submitSong = createServerFn({ method: 'POST' })
@@ -16,6 +16,7 @@ export const submitSong = createServerFn({ method: 'POST' })
         title: data.title,
         artist: data.artist,
         status: 'pending',
+        points: 1,
       })
       .returning()
     return song
@@ -24,7 +25,14 @@ export const submitSong = createServerFn({ method: 'POST' })
 export const deleteSong = createServerFn({ method: 'POST' })
   .inputValidator((id: number) => id)
   .handler(async ({ data: id }) => {
+    // Delete the song
     await db.delete(songs).where(eq(songs.id, id))
+    
+    // Increment points for all remaining songs
+    await db.update(songs).set({
+      points: sql`${songs.points} + 1`
+    })
+    
     return { success: true }
   })
 
