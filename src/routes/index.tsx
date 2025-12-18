@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SpinWheelModal } from '@/components/SpinWheelModal'
-import { getSongs, submitSong, clearQueue, deleteSong } from '@/server/songs'
-import { Music, Trash2, Sparkles } from 'lucide-react'
+import { getSongs, submitSong, clearQueue, deleteSong, addPoints } from '@/server/songs'
+import { Music, Trash2, Sparkles, Plus } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -19,6 +19,8 @@ function App() {
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
   const [spinWheelOpen, setSpinWheelOpen] = useState(false)
+  const [customPointsSongId, setCustomPointsSongId] = useState<number | null>(null)
+  const [customPointsValue, setCustomPointsValue] = useState('')
   const queryClient = useQueryClient()
   const { user } = useUser()
   
@@ -50,6 +52,15 @@ function App() {
     mutationFn: (id: number) => deleteSong({ data: id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['songs'] })
+    },
+  })
+
+  const addPointsMutation = useMutation({
+    mutationFn: (data: { id: number; points: number }) => addPoints({ data }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['songs'] })
+      setCustomPointsSongId(null)
+      setCustomPointsValue('')
     },
   })
 
@@ -141,13 +152,34 @@ function App() {
         </CardContent>
       </Card>
 
+      <Card className="mb-6 border-purple-500/30 bg-gradient-to-br from-purple-500/5 to-pink-500/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-purple-500" />
+            How Points Work
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <p className="text-muted-foreground">
+            <span className="font-semibold text-foreground">The higher your points, the more likely you are to be picked</span> when the wheel spins!
+          </p>
+          <div className="space-y-2">
+            <p className="font-medium">Ways to earn more points:</p>
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+              <li><span className="text-foreground">Stay on the board</span> — Every time a song gets picked, all remaining songs get +1 point</li>
+              <li><span className="text-foreground">Be a good person in chat</span> — I might give bonus points to cool people!</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
-          <CardTitle>Queue</CardTitle>
+          <CardTitle>Leaderboard</CardTitle>
           <CardDescription>
             {songs.length === 0
               ? 'No songs in queue yet'
-              : `${songs.length} song${songs.length === 1 ? '' : 's'} in queue`}
+              : `${songs.length} song${songs.length === 1 ? '' : 's'} — ranked by points`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -161,28 +193,128 @@ function App() {
             </div>
           ) : (
             <div className="space-y-2">
-              {songs.map((song: { id: number; title: string; artist: string; submittedAt: Date | string; points: number }) => (
-                <div
-                  key={song.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="font-medium">{song.title}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {song.artist}
+              {songs.map((song: { id: number; title: string; artist: string; submittedAt: Date | string; points: number }, index: number) => {
+                const rank = index + 1
+                const isTop3 = rank <= 3
+                const rankColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
+                
+                return (
+                  <div
+                    key={song.id}
+                    className={`flex items-center gap-4 p-4 border rounded-lg hover:bg-accent transition-colors ${isTop3 ? 'border-purple-500/30 bg-purple-500/5' : ''}`}
+                  >
+                    {/* Rank */}
+                    <div className={`w-8 text-center font-bold text-lg ${isTop3 ? rankColors[rank - 1] : 'text-muted-foreground'}`}>
+                      {rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : `#${rank}`}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 rounded-full">
+                    
+                    {/* Song info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{song.title}</div>
+                      <div className="text-sm text-muted-foreground truncate">
+                        {song.artist}
+                      </div>
+                    </div>
+                    
+                    {/* Admin controls */}
+                    {isKnownAdminUser && (
+                      <div className="flex items-center gap-1">
+                        {customPointsSongId === song.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              placeholder="pts"
+                              value={customPointsValue}
+                              onChange={(e) => setCustomPointsValue(e.target.value)}
+                              className="w-16 h-7 text-xs"
+                              min="1"
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => {
+                                const pts = parseInt(customPointsValue)
+                                if (pts > 0) {
+                                  addPointsMutation.mutate({ id: song.id, points: pts })
+                                }
+                              }}
+                              disabled={!customPointsValue || parseInt(customPointsValue) <= 0}
+                            >
+                              Add
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-1 text-xs"
+                              onClick={() => {
+                                setCustomPointsSongId(null)
+                                setCustomPointsValue('')
+                              }}
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
+                              onClick={() => addPointsMutation.mutate({ id: song.id, points: 1 })}
+                            >
+                              +1
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
+                              onClick={() => addPointsMutation.mutate({ id: song.id, points: 5 })}
+                            >
+                              +5
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
+                              onClick={() => addPointsMutation.mutate({ id: song.id, points: 10 })}
+                            >
+                              +10
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-100"
+                              onClick={() => setCustomPointsSongId(song.id)}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-100"
+                              onClick={() => {
+                                if (confirm(`Delete "${song.title}" by ${song.artist}?`)) {
+                                  deleteMutation.mutate(song.id)
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Points badge */}
+                    <div className="flex items-center gap-1 px-3 py-1.5 bg-purple-500/10 rounded-full">
                       <Sparkles className="w-3 h-3 text-purple-500" />
-                      <span className="text-xs font-medium text-purple-600">{song.points}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(song.submittedAt).toLocaleTimeString()}
+                      <span className="text-sm font-semibold text-purple-600">{song.points}</span>
+                      <span className="text-xs text-purple-500/70">pts</span>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>

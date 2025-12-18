@@ -43,3 +43,12 @@ export const clearQueue = createServerFn({ method: 'POST' }).handler(
   }
 )
 
+export const addPoints = createServerFn({ method: 'POST' })
+  .inputValidator((data: { id: number; points: number }) => data)
+  .handler(async ({ data }) => {
+    await db.update(songs)
+      .set({ points: sql`${songs.points} + ${data.points}` })
+      .where(eq(songs.id, data.id))
+    return { success: true }
+  })
+
