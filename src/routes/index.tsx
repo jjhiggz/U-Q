@@ -5,8 +5,9 @@ import { useUser } from '@clerk/clerk-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getSongs, submitSong, clearQueue } from '@/server/songs'
-import { Music, Trash2 } from 'lucide-react'
+import { SpinWheelModal } from '@/components/SpinWheelModal'
+import { getSongs, submitSong, clearQueue, deleteSong } from '@/server/songs'
+import { Music, Trash2, Sparkles } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -17,6 +18,7 @@ const ADMIN_EMAILS = ['jonathan.higger@gmail.com']
 function App() {
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
+  const [spinWheelOpen, setSpinWheelOpen] = useState(false)
   const queryClient = useQueryClient()
   const { user } = useUser()
   
@@ -44,6 +46,13 @@ function App() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => deleteSong({ data: id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['songs'] })
+    },
+  })
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (title.trim() && artist.trim()) {
@@ -64,11 +73,19 @@ function App() {
       </div>
 
       {isKnownAdminUser && (
-        <Card className="mb-6 border-destructive/50 bg-destructive/5">
+        <Card className="mb-6 border-purple-500/50 bg-purple-500/5">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Admin Control Panel</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex gap-3">
+            <Button
+              onClick={() => setSpinWheelOpen(true)}
+              disabled={songs.length === 0}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Spin the Wheel
+            </Button>
             <Button
               variant="destructive"
               onClick={() => {
@@ -84,6 +101,13 @@ function App() {
           </CardContent>
         </Card>
       )}
+
+      <SpinWheelModal
+        open={spinWheelOpen}
+        onOpenChange={setSpinWheelOpen}
+        songs={songs}
+        onDeleteSong={(id) => deleteMutation.mutate(id)}
+      />
 
       <Card className="mb-6">
         <CardHeader>
