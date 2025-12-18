@@ -1,20 +1,27 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useUser } from '@clerk/clerk-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getSongs, submitSong } from '@/server/songs'
-import { Music } from 'lucide-react'
+import { getSongs, submitSong, clearQueue } from '@/server/songs'
+import { Music, Trash2 } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: App,
 })
 
+const ADMIN_EMAILS = ['jonathan.higger@gmail.com']
+
 function App() {
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
   const queryClient = useQueryClient()
+  const { user } = useUser()
+  
+  const userEmail = user?.primaryEmailAddress?.emailAddress
+  const isKnownAdminUser = userEmail ? ADMIN_EMAILS.includes(userEmail) : false
 
   const { data: songs = [], isLoading } = useQuery({
     queryKey: ['songs'],
@@ -27,6 +34,13 @@ function App() {
       queryClient.invalidateQueries({ queryKey: ['songs'] })
       setTitle('')
       setArtist('')
+    },
+  })
+
+  const clearMutation = useMutation({
+    mutationFn: () => clearQueue(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['songs'] })
     },
   })
 
@@ -48,6 +62,28 @@ function App() {
           Submit a song for review during the livestream
         </p>
       </div>
+
+      {isKnownAdminUser && (
+        <Card className="mb-6 border-destructive/50 bg-destructive/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Admin Control Panel</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (confirm('Are you sure you want to clear the entire queue?')) {
+                  clearMutation.mutate()
+                }
+              }}
+              disabled={clearMutation.isPending || songs.length === 0}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {clearMutation.isPending ? 'Clearing...' : 'Clear Queue'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mb-6">
         <CardHeader>

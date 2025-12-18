@@ -16,12 +16,6 @@ const config = defineConfig({
     tanstackStart(),
     viteReact(),
   ],
-  optimizeDeps: {
-    exclude: ['@orpc/server', 'drizzle-orm', 'pg'],
-  },
-  ssr: {
-    noExternal: ['@tanstack/react-query'],
-  },
 })
 
 export default config
