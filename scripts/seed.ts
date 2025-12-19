@@ -36,6 +36,38 @@ const SAMPLE_NOTES = [
   null, null, null, null, null, // Include nulls for variety
 ]
 
+// Sample chat usernames
+const CHAT_NAME_PREFIXES = [
+  'xX', 'DJ', 'MC', 'Lil', 'Big', 'The', 'Mr', 'Ms', 'Sir', 'Lord', 'King', 'Queen', ''
+]
+const CHAT_NAME_SUFFIXES = [
+  'Xx', '_music', '_beats', '808', 'productions', '_official', '420', '69', 'Gaming', 'TV', ''
+]
+
+// Generate a realistic chat username
+const generateNameInChat = (): string | null => {
+  if (Math.random() > 0.85) return null // 15% have no chat name
+  
+  const style = Math.random()
+  
+  if (style < 0.3) {
+    // Simple first name style
+    return faker.person.firstName()
+  } else if (style < 0.5) {
+    // Username with numbers
+    return `${faker.internet.username()}${faker.number.int({ min: 1, max: 99 })}`
+  } else if (style < 0.7) {
+    // Prefix + word style
+    const prefix = CHAT_NAME_PREFIXES[Math.floor(Math.random() * CHAT_NAME_PREFIXES.length)]
+    const word = faker.word.adjective()
+    const suffix = CHAT_NAME_SUFFIXES[Math.floor(Math.random() * CHAT_NAME_SUFFIXES.length)]
+    return `${prefix}${word}${suffix}`.slice(0, 20)
+  } else {
+    // Simple username
+    return faker.internet.username().slice(0, 20)
+  }
+}
+
 // Helper to generate a slug from artist name
 const toSlug = (name: string): string =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20)
@@ -162,6 +194,7 @@ async function seed() {
     return {
       title: faker.music.songName(),
       artist,
+      nameInChat: generateNameInChat(),
       notes: getRandomNote(),
       genres: generateGenres(),
       songLink: generateSongLink(artist),
@@ -187,6 +220,7 @@ async function seed() {
   const withSpotify = fakeSongs.filter(s => s.spotifyUrl).length
   const withNotes = fakeSongs.filter(s => s.notes).length
   const withGenres = fakeSongs.filter(s => s.genres).length
+  const withNameInChat = fakeSongs.filter(s => s.nameInChat).length
   const withBananas = fakeSongs.filter(s => s.bananaStickers > 0).length
   const totalBananas = fakeSongs.reduce((sum, s) => sum + s.bananaStickers, 0)
   
@@ -199,6 +233,7 @@ async function seed() {
   console.log(`   Spotify: ${withSpotify}/${SONG_COUNT}`)
   console.log(`   Notes: ${withNotes}/${SONG_COUNT}`)
   console.log(`   Genres: ${withGenres}/${SONG_COUNT}`)
+  console.log(`   Chat names: ${withNameInChat}/${SONG_COUNT}`)
   console.log(`   🍌 Bananas: ${withBananas} songs (${totalBananas} total stickers)\n`)
 
   // Insert in batches

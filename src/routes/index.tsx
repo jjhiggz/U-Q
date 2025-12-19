@@ -19,9 +19,13 @@ export const Route = createFileRoute('/')({
 
 const ADMIN_EMAILS = ['jonathan.higger@gmail.com']
 
+// Search criteria options
+type SearchCriteria = 'all' | 'title' | 'artist' | 'chatName' | 'genre'
+
 function App() {
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
+  const [nameInChat, setNameInChat] = useState('')
   const [notes, setNotes] = useState('')
   const [genres, setGenres] = useState('')
   const [songLink, setSongLink] = useState('')
@@ -36,11 +40,13 @@ function App() {
   const [customPointsSongId, setCustomPointsSongId] = useState<number | null>(null)
   const [customPointsValue, setCustomPointsValue] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchCriteria, setSearchCriteria] = useState<SearchCriteria>('all')
   const [submitFormOpen, setSubmitFormOpen] = useState(true)
   // Edit state
   const [editingSongId, setEditingSongId] = useState<number | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editArtist, setEditArtist] = useState('')
+  const [editNameInChat, setEditNameInChat] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [editGenres, setEditGenres] = useState('')
   const [editSongLink, setEditSongLink] = useState('')
@@ -97,6 +103,7 @@ function App() {
     mutationFn: (data: { 
       title: string
       artist: string
+      nameInChat?: string
       notes?: string
       genres?: string
       songLink?: string
@@ -112,6 +119,7 @@ function App() {
       queryClient.invalidateQueries({ queryKey: ['songs'] })
       setTitle('')
       setArtist('')
+      setNameInChat('')
       setNotes('')
       setGenres('')
       setSongLink('')
@@ -129,6 +137,7 @@ function App() {
       id: number
       title: string
       artist: string
+      nameInChat?: string
       notes?: string
       genres?: string
       songLink?: string
@@ -193,7 +202,8 @@ function App() {
       const allSubmitterIds = isKnownAdminUser ? [] : [clientId, user?.id].filter((id): id is string => Boolean(id))
       submitMutation.mutate({ 
         title: title.trim(), 
-        artist: artist.trim(), 
+        artist: artist.trim(),
+        nameInChat: nameInChat.trim() || undefined,
         notes: notes.trim() || undefined,
         genres: genres.trim() || undefined,
         songLink: songLink.trim() || undefined,
@@ -213,10 +223,11 @@ function App() {
     song.songLink || song.spotifyUrl || ''
 
   // Start editing a song
-  const startEditing = (song: { id: number; title: string; artist: string; notes?: string | null; genres?: string | null; songLink?: string | null; spotifyUrl?: string | null; youtubeUrl?: string | null; soundcloudUrl?: string | null; instagramUrl?: string | null; tiktokUrl?: string | null; facebookUrl?: string | null }) => {
+  const startEditing = (song: { id: number; title: string; artist: string; nameInChat?: string | null; notes?: string | null; genres?: string | null; songLink?: string | null; spotifyUrl?: string | null; youtubeUrl?: string | null; soundcloudUrl?: string | null; instagramUrl?: string | null; tiktokUrl?: string | null; facebookUrl?: string | null }) => {
     setEditingSongId(song.id)
     setEditTitle(song.title)
     setEditArtist(song.artist)
+    setEditNameInChat(song.nameInChat || '')
     setEditNotes(song.notes || '')
     setEditGenres(song.genres || '')
     setEditSongLink(getSongLinkFromSong(song))
@@ -233,6 +244,7 @@ function App() {
     setEditingSongId(null)
     setEditTitle('')
     setEditArtist('')
+    setEditNameInChat('')
     setEditNotes('')
     setEditGenres('')
     setEditSongLink('')
@@ -263,6 +275,7 @@ function App() {
         id: songId,
         title: editTitle.trim(),
         artist: editArtist.trim(),
+        nameInChat: editNameInChat.trim() || undefined,
         notes: editNotes.trim() || undefined,
         genres: editGenres.trim() || undefined,
         songLink: editSongLink.trim() || undefined,
@@ -374,13 +387,23 @@ function App() {
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Genres</div>
-                  <Input
-                    placeholder="e.g. Rock, Indie, Electronic"
-                    value={editGenres}
-                    onChange={(e) => setEditGenres(e.target.value)}
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Your Name in Chat</div>
+                    <Input
+                      placeholder="What's your username in chat?"
+                      value={editNameInChat}
+                      onChange={(e) => setEditNameInChat(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Genres</div>
+                    <Input
+                      placeholder="e.g. Rock, Indie, Electronic"
+                      value={editGenres}
+                      onChange={(e) => setEditGenres(e.target.value)}
+                    />
+                  </div>
                 </div>
                 {/* Song Link */}
                 <div className="space-y-2">
@@ -508,7 +531,12 @@ function App() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="font-medium">{userSong.title}</div>
-                    <div className="text-sm text-muted-foreground">{userSong.artist}</div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      {userSong.artist}
+                      {userSong.nameInChat && (
+                        <span className="text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">@{userSong.nameInChat}</span>
+                      )}
+                    </div>
                     {userSong.genres && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {userSong.genres.split(',').map((genre: string) => (
@@ -655,14 +683,25 @@ function App() {
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Genres</div>
-                  <Input
-                    placeholder="e.g. Rock, Indie, Electronic"
-                    value={genres}
-                    onChange={(e) => setGenres(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">Separate multiple genres with commas</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Your Name in Chat</div>
+                    <Input
+                      placeholder="What's your username in chat?"
+                      value={nameInChat}
+                      onChange={(e) => setNameInChat(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">So we know who you are!</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Genres</div>
+                    <Input
+                      placeholder="e.g. Rock, Indie, Electronic"
+                      value={genres}
+                      onChange={(e) => setGenres(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Separate with commas</p>
+                  </div>
                 </div>
                 
                 {/* Song Link */}
@@ -826,14 +865,27 @@ function App() {
           </CardDescription>
             </div>
             {songs.length > 0 && (
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search songs..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
+              <div className="flex items-center gap-2">
+                <select
+                  value={searchCriteria}
+                  onChange={(e) => setSearchCriteria(e.target.value as SearchCriteria)}
+                  className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="all">All</option>
+                  <option value="title">Title</option>
+                  <option value="artist">Artist</option>
+                  <option value="chatName">Chat Name</option>
+                  <option value="genre">Genre</option>
+                </select>
+                <div className="relative w-48">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder={searchCriteria === 'all' ? 'Search...' : `Search by ${searchCriteria}...`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -856,14 +908,27 @@ function App() {
                 const allPointsTotal = songs.reduce((sum: number, s: { points: number }) => sum + (s.points || 1), 0)
                 const hasBanana = bananaSongs.length > 0
                 
-                // Filter songs based on search query
+                // Filter songs based on search query and criteria
                 const query = searchQuery.toLowerCase().trim()
                 const filteredSongs = query
-                  ? songs.filter((s: { title: string; artist: string; genres?: string | null }) => 
-                      s.title.toLowerCase().includes(query) || 
-                      s.artist.toLowerCase().includes(query) ||
-                      (s.genres?.toLowerCase().includes(query) ?? false)
-                    )
+                  ? songs.filter((s: { title: string; artist: string; nameInChat?: string | null; genres?: string | null }) => {
+                      switch (searchCriteria) {
+                        case 'title':
+                          return s.title.toLowerCase().includes(query)
+                        case 'artist':
+                          return s.artist.toLowerCase().includes(query)
+                        case 'chatName':
+                          return s.nameInChat?.toLowerCase().includes(query) ?? false
+                        case 'genre':
+                          return s.genres?.toLowerCase().includes(query) ?? false
+                        case 'all':
+                        default:
+                          return s.title.toLowerCase().includes(query) || 
+                            s.artist.toLowerCase().includes(query) ||
+                            (s.nameInChat?.toLowerCase().includes(query) ?? false) ||
+                            (s.genres?.toLowerCase().includes(query) ?? false)
+                      }
+                    })
                   : songs
                 
                 if (filteredSongs.length === 0 && query) {
@@ -874,7 +939,7 @@ function App() {
                   )
                 }
                 
-                return filteredSongs.map((song: { id: number; title: string; artist: string; notes?: string | null; genres?: string | null; songLink?: string | null; youtubeUrl?: string | null; spotifyUrl?: string | null; soundcloudUrl?: string | null; instagramUrl?: string | null; tiktokUrl?: string | null; facebookUrl?: string | null; submittedAt: Date | string; points: number; bananaStickers: number; submitterId: string | null }) => {
+                return filteredSongs.map((song: { id: number; title: string; artist: string; nameInChat?: string | null; notes?: string | null; genres?: string | null; songLink?: string | null; youtubeUrl?: string | null; spotifyUrl?: string | null; soundcloudUrl?: string | null; instagramUrl?: string | null; tiktokUrl?: string | null; facebookUrl?: string | null; submittedAt: Date | string; points: number; bananaStickers: number; submitterId: string | null }) => {
                   // Use original index for rank (not filtered index)
                   const originalIndex = songs.findIndex((s: { id: number }) => s.id === song.id)
                   const rank = originalIndex + 1
@@ -943,11 +1008,18 @@ function App() {
                               onChange={(e) => setEditArtist(e.target.value)}
                             />
                           </div>
-                          <Input
-                            placeholder="Genres (comma-separated)"
-                            value={editGenres}
-                            onChange={(e) => setEditGenres(e.target.value)}
-                          />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <Input
+                              placeholder="Your name in chat"
+                              value={editNameInChat}
+                              onChange={(e) => setEditNameInChat(e.target.value)}
+                            />
+                            <Input
+                              placeholder="Genres (comma-separated)"
+                              value={editGenres}
+                              onChange={(e) => setEditGenres(e.target.value)}
+                            />
+                          </div>
                           {/* Song Link */}
                           <Input
                             placeholder="Song link (YouTube, Spotify, SoundCloud, etc.)"
@@ -1100,6 +1172,9 @@ function App() {
                         <div className="flex-1 min-w-0 flex items-center gap-2">
                           <span className="font-medium truncate">{song.title}</span>
                           <span className="text-muted-foreground text-sm truncate">— {song.artist}</span>
+                          {song.nameInChat && (
+                            <span className="text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded flex-shrink-0">@{song.nameInChat}</span>
+                          )}
                         </div>
                         
                         {/* Expand indicator if has extra content */}
@@ -1154,6 +1229,9 @@ function App() {
                             <span className="font-medium truncate">{song.title}</span>
                             {isOwnSong && <span className="text-xs bg-green-500 text-white px-1.5 py-0.5 rounded flex-shrink-0">You</span>}
                             <span className="text-muted-foreground text-sm truncate">— {song.artist}</span>
+                            {song.nameInChat && (
+                              <span className="text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded flex-shrink-0">@{song.nameInChat}</span>
+                            )}
                           </div>
                           
                           {/* Collapse indicator (not for own song) */}

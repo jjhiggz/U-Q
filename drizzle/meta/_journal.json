@@ -43,6 +43,13 @@
       "when": 1766184860806,
       "tag": "0005_slimy_dazzler",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1766185788620,
+      "tag": "0006_add-name-in-chat",
+      "breakpoints": true
     }
   ]
 }

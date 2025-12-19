@@ -4,6 +4,7 @@ export const songs = pgTable('songs', {
   id: serial('id').primaryKey(),
   title: varchar('title', { length: 255 }).notNull(),
   artist: varchar('artist', { length: 255 }).notNull(),
+  nameInChat: varchar('name_in_chat', { length: 100 }), // User's name in the chat room
   notes: text('notes'),
   genres: varchar('genres', { length: 500 }),
   // Song link - the actual song to listen to

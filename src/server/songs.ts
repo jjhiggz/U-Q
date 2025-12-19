@@ -84,6 +84,7 @@ export const submitSong = createServerFn({ method: 'POST' })
   .inputValidator((data: { 
     title: string
     artist: string
+    nameInChat?: string
     notes?: string
     genres?: string
     songLink?: string
@@ -142,6 +143,7 @@ export const submitSong = createServerFn({ method: 'POST' })
       .values({
         title: data.title,
         artist: data.artist,
+        nameInChat: data.nameInChat || null,
         notes: data.notes || null,
         genres: data.genres || null,
         songLink: data.songLink || null,
@@ -214,6 +216,7 @@ export const updateSong = createServerFn({ method: 'POST' })
     id: number
     title: string
     artist: string
+    nameInChat?: string
     notes?: string
     genres?: string
     songLink?: string
@@ -272,6 +275,7 @@ export const updateSong = createServerFn({ method: 'POST' })
       .set({
         title: data.title,
         artist: data.artist,
+        nameInChat: data.nameInChat || null,
         notes: data.notes || null,
         genres: data.genres || null,
         songLink: data.songLink || null,
