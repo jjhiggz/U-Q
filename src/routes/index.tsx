@@ -456,26 +456,28 @@ function App() {
         </Card>
       )}
 
-      <Card className="mb-6 border-purple-500/30 bg-gradient-to-br from-purple-500/5 to-pink-500/5">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-500" />
-            How Points Work
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <p className="text-muted-foreground">
-            <span className="font-semibold text-foreground">The higher your points, the more likely you are to be picked</span> when the wheel spins!
-          </p>
-          <div className="space-y-2">
-            <p className="font-medium">Ways to earn more points:</p>
-            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-              <li><span className="text-foreground">Stay on the board</span> — Every time a song gets picked, all remaining songs get +1 point</li>
-              <li><span className="text-foreground">Be a good person in chat</span> — I might give bonus points to cool people!</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+      {!isKnownAdminUser && (
+        <Card className="mb-6 border-purple-500/30 bg-gradient-to-br from-purple-500/5 to-pink-500/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-500" />
+              How Points Work
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              <span className="font-semibold text-foreground">The higher your points, the more likely you are to be picked</span> when the wheel spins!
+            </p>
+            <div className="space-y-2">
+              <p className="font-medium">Ways to earn more points:</p>
+              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                <li><span className="text-foreground">Stay on the board</span> — Every time a song gets picked, all remaining songs get +1 point</li>
+                <li><span className="text-foreground">Be a good person in chat</span> — I might give bonus points to cool people!</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
