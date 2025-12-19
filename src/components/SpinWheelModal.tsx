@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { SpinWheel } from './SpinWheel'
-import { Sparkles, Trash2, X } from 'lucide-react'
+import { Sparkles, Pin, RotateCcw } from 'lucide-react'
 
 interface Song {
   id: number
@@ -22,14 +22,14 @@ interface SpinWheelModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   songs: Song[]
-  onDeleteSong: (id: number) => void
+  onArchiveSong: (id: number) => void
 }
 
 export function SpinWheelModal({
   open,
   onOpenChange,
   songs,
-  onDeleteSong,
+  onArchiveSong,
 }: SpinWheelModalProps) {
   const [isSpinning, setIsSpinning] = useState(false)
   const [winner, setWinner] = useState<Song | null>(null)
@@ -48,15 +48,15 @@ export function SpinWheelModal({
     setShowResult(true)
   }, [])
 
-  const handleRemoveFromQueue = () => {
+  const handlePinAndArchive = () => {
     if (winner) {
-      onDeleteSong(winner.id)
+      onArchiveSong(winner.id)
       setShowResult(false)
       setWinner(null)
     }
   }
 
-  const handleKeepInQueue = () => {
+  const handleRespin = () => {
     setShowResult(false)
     setWinner(null)
   }
@@ -105,20 +105,19 @@ export function SpinWheelModal({
 
               <div className="flex gap-3 justify-center pt-4">
                 <Button
-                  variant="destructive"
-                  onClick={handleRemoveFromQueue}
-                  className="gap-2"
+                  onClick={handlePinAndArchive}
+                  className="gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
                 >
-                  <Trash2 className="w-4 h-4" />
-                  Remove from Queue
+                  <Pin className="w-4 h-4" />
+                  Pin & Archive
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={handleKeepInQueue}
+                  onClick={handleRespin}
                   className="gap-2"
                 >
-                  <X className="w-4 h-4" />
-                  Keep in Queue
+                  <RotateCcw className="w-4 h-4" />
+                  Re-spin
                 </Button>
               </div>
             </div>

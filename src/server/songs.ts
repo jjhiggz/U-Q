@@ -1,19 +1,37 @@
 import { createServerFn } from '@tanstack/react-start'
 import { db } from '@/db'
 import { songs } from '@/db/schema'
-import { eq, desc, sql, inArray } from 'drizzle-orm'
+import { eq, desc, sql, inArray, isNull, isNotNull } from 'drizzle-orm'
 
-// Detect link type from URL
-const detectLinkType = (url: string): 'youtube' | 'spotify' | 'soundcloud' | null => {
+// Validate URL for a specific platform
+const validateUrl = (url: string, platform: 'youtube' | 'spotify' | 'soundcloud' | 'instagram' | 'tiktok'): boolean => {
   const lower = url.toLowerCase()
-  if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'youtube'
-  if (lower.includes('spotify.com')) return 'spotify'
-  if (lower.includes('soundcloud.com')) return 'soundcloud'
-  return null
+  switch (platform) {
+    case 'youtube':
+      return lower.includes('youtube.com') || lower.includes('youtu.be')
+    case 'spotify':
+      return lower.includes('spotify.com')
+    case 'soundcloud':
+      return lower.includes('soundcloud.com')
+    case 'instagram':
+      return lower.includes('instagram.com') || lower.includes('instagr.am')
+    case 'tiktok':
+      return lower.includes('tiktok.com') || lower.includes('vm.tiktok.com')
+    default:
+      return false
+  }
 }
 
 export const getSongs = createServerFn().handler(async () => {
-  return await db.select().from(songs).orderBy(desc(songs.bananaSticker), desc(songs.points), desc(songs.submittedAt))
+  return await db.select().from(songs)
+    .where(isNull(songs.archivedAt))
+    .orderBy(desc(songs.bananaSticker), desc(songs.points), desc(songs.submittedAt))
+})
+
+export const getArchivedSongs = createServerFn().handler(async () => {
+  return await db.select().from(songs)
+    .where(isNotNull(songs.archivedAt))
+    .orderBy(desc(songs.archivedAt))
 })
 
 export const checkCanSubmit = createServerFn({ method: 'POST' })
@@ -41,7 +59,11 @@ export const submitSong = createServerFn({ method: 'POST' })
     artist: string
     notes?: string
     genres?: string
-    link?: string
+    youtubeUrl?: string
+    spotifyUrl?: string
+    soundcloudUrl?: string
+    instagramUrl?: string
+    tiktokUrl?: string
     submitterId: string
     allSubmitterIds?: string[] 
   }) => data)
@@ -62,13 +84,21 @@ export const submitSong = createServerFn({ method: 'POST' })
       }
     }
     
-    // Validate and detect link type if provided
-    let linkType: 'youtube' | 'spotify' | 'soundcloud' | null = null
-    if (data.link) {
-      linkType = detectLinkType(data.link)
-      if (!linkType) {
-        throw new Error('Only YouTube, Spotify, and SoundCloud links are accepted')
-      }
+    // Validate social media URLs if provided
+    if (data.youtubeUrl && !validateUrl(data.youtubeUrl, 'youtube')) {
+      throw new Error('Invalid YouTube URL')
+    }
+    if (data.spotifyUrl && !validateUrl(data.spotifyUrl, 'spotify')) {
+      throw new Error('Invalid Spotify URL')
+    }
+    if (data.soundcloudUrl && !validateUrl(data.soundcloudUrl, 'soundcloud')) {
+      throw new Error('Invalid SoundCloud URL')
+    }
+    if (data.instagramUrl && !validateUrl(data.instagramUrl, 'instagram')) {
+      throw new Error('Invalid Instagram URL')
+    }
+    if (data.tiktokUrl && !validateUrl(data.tiktokUrl, 'tiktok')) {
+      throw new Error('Invalid TikTok URL')
     }
     
     const [song] = await db
@@ -78,8 +108,11 @@ export const submitSong = createServerFn({ method: 'POST' })
         artist: data.artist,
         notes: data.notes || null,
         genres: data.genres || null,
-        link: data.link || null,
-        linkType,
+        youtubeUrl: data.youtubeUrl || null,
+        spotifyUrl: data.spotifyUrl || null,
+        soundcloudUrl: data.soundcloudUrl || null,
+        instagramUrl: data.instagramUrl || null,
+        tiktokUrl: data.tiktokUrl || null,
         status: 'pending',
         points: 1,
         submitterId: data.submitterId || null,
@@ -91,13 +124,23 @@ export const submitSong = createServerFn({ method: 'POST' })
 export const deleteSong = createServerFn({ method: 'POST' })
   .inputValidator((id: number) => id)
   .handler(async ({ data: id }) => {
-    // Delete the song
+    // Delete the song permanently
     await db.delete(songs).where(eq(songs.id, id))
+    return { success: true }
+  })
+
+export const archiveSong = createServerFn({ method: 'POST' })
+  .inputValidator((id: number) => id)
+  .handler(async ({ data: id }) => {
+    // Archive the song (mark as picked)
+    await db.update(songs)
+      .set({ archivedAt: new Date() })
+      .where(eq(songs.id, id))
     
-    // Increment points for all remaining songs
-    await db.update(songs).set({
-      points: sql`${songs.points} + 1`
-    })
+    // Increment points for all remaining (non-archived) songs
+    await db.update(songs)
+      .set({ points: sql`${songs.points} + 1` })
+      .where(isNull(songs.archivedAt))
     
     return { success: true }
   })

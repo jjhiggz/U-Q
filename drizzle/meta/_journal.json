@@ -15,6 +15,13 @@
       "when": 1766149003886,
       "tag": "0001_fearless_gambit",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766179386624,
+      "tag": "0002_glorious_hammerhead",
+      "breakpoints": true
     }
   ]
 }

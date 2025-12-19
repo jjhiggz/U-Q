@@ -6,13 +6,18 @@ export const songs = pgTable('songs', {
   artist: varchar('artist', { length: 255 }).notNull(),
   notes: text('notes'),
   genres: varchar('genres', { length: 500 }),
-  link: varchar('link', { length: 500 }),
-  linkType: varchar('link_type', { length: 20 }), // 'youtube' | 'spotify' | 'soundcloud'
+  // Social media links
+  youtubeUrl: varchar('youtube_url', { length: 500 }),
+  spotifyUrl: varchar('spotify_url', { length: 500 }),
+  soundcloudUrl: varchar('soundcloud_url', { length: 500 }),
+  instagramUrl: varchar('instagram_url', { length: 500 }),
+  tiktokUrl: varchar('tiktok_url', { length: 500 }),
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   status: varchar('status', { length: 50 }).default('pending').notNull(),
   points: integer('points').default(1).notNull(),
   bananaSticker: boolean('banana_sticker').default(false).notNull(),
   submitterId: varchar('submitter_id', { length: 255 }),
+  archivedAt: timestamp('archived_at'), // null = in queue, set = archived/pinned
 })
 
 export type Song = typeof songs.$inferSelect

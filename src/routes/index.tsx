@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SpinWheelModal } from '@/components/SpinWheelModal'
 import { WheelPreviewModal } from '@/components/WheelPreviewModal'
-import { getSongs, submitSong, clearQueue, deleteSong, addPoints, toggleBananaSticker } from '@/server/songs'
+import { PinnedSongSection } from '@/components/PinnedSongSection'
+import { getSongs, getArchivedSongs, submitSong, clearQueue, deleteSong, archiveSong, addPoints, toggleBananaSticker } from '@/server/songs'
 import { getClientId } from '@/lib/client-id'
-import { Music, Trash2, Sparkles, Plus, Eye, CheckCircle, Search, Youtube, Link, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react'
+import { Music, Trash2, Sparkles, Plus, Eye, CheckCircle, Search, Youtube, ChevronDown, ChevronUp } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -23,7 +24,11 @@ function App() {
   const [artist, setArtist] = useState('')
   const [notes, setNotes] = useState('')
   const [genres, setGenres] = useState('')
-  const [link, setLink] = useState('')
+  const [youtubeUrl, setYoutubeUrl] = useState('')
+  const [spotifyUrl, setSpotifyUrl] = useState('')
+  const [soundcloudUrl, setSoundcloudUrl] = useState('')
+  const [instagramUrl, setInstagramUrl] = useState('')
+  const [tiktokUrl, setTiktokUrl] = useState('')
   const [spinWheelOpen, setSpinWheelOpen] = useState(false)
   const [previewSong, setPreviewSong] = useState<{ id: number; title: string; artist: string; points: number; bananaSticker: boolean } | null>(null)
   const [customPointsSongId, setCustomPointsSongId] = useState<number | null>(null)
@@ -52,6 +57,13 @@ function App() {
   const { data: songs = [], isLoading } = useQuery({
     queryKey: ['songs'],
     queryFn: () => getSongs(),
+    refetchInterval: 5000,
+  })
+
+  const { data: archivedSongs = [] } = useQuery({
+    queryKey: ['archivedSongs'],
+    queryFn: () => getArchivedSongs(),
+    refetchInterval: 5000,
   })
 
   // Check if user already has a song in the queue
@@ -65,14 +77,30 @@ function App() {
   }, [songs, clientId, user?.id])
 
   const submitMutation = useMutation({
-    mutationFn: (data: { title: string; artist: string; notes?: string; genres?: string; link?: string; submitterId: string; allSubmitterIds: string[] }) => submitSong({ data }),
+    mutationFn: (data: { 
+      title: string
+      artist: string
+      notes?: string
+      genres?: string
+      youtubeUrl?: string
+      spotifyUrl?: string
+      soundcloudUrl?: string
+      instagramUrl?: string
+      tiktokUrl?: string
+      submitterId: string
+      allSubmitterIds: string[] 
+    }) => submitSong({ data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['songs'] })
       setTitle('')
       setArtist('')
       setNotes('')
       setGenres('')
-      setLink('')
+      setYoutubeUrl('')
+      setSpotifyUrl('')
+      setSoundcloudUrl('')
+      setInstagramUrl('')
+      setTiktokUrl('')
     },
   })
 
@@ -87,6 +115,15 @@ function App() {
     mutationFn: (id: number) => deleteSong({ data: id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['songs'] })
+      queryClient.invalidateQueries({ queryKey: ['archivedSongs'] })
+    },
+  })
+
+  const archiveMutation = useMutation({
+    mutationFn: (id: number) => archiveSong({ data: id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['songs'] })
+      queryClient.invalidateQueries({ queryKey: ['archivedSongs'] })
     },
   })
 
@@ -116,7 +153,11 @@ function App() {
         artist: artist.trim(), 
         notes: notes.trim() || undefined,
         genres: genres.trim() || undefined,
-        link: link.trim() || undefined,
+        youtubeUrl: youtubeUrl.trim() || undefined,
+        spotifyUrl: spotifyUrl.trim() || undefined,
+        soundcloudUrl: soundcloudUrl.trim() || undefined,
+        instagramUrl: instagramUrl.trim() || undefined,
+        tiktokUrl: tiktokUrl.trim() || undefined,
         submitterId, 
         allSubmitterIds 
       })
@@ -134,6 +175,11 @@ function App() {
           Your Queue — submit songs for review
         </p>
       </div>
+
+      <PinnedSongSection 
+        archivedSongs={archivedSongs} 
+        isAdmin={isKnownAdminUser} 
+      />
 
       {isKnownAdminUser && (
         <Card className="mb-6 border-purple-500/50 bg-purple-500/5">
@@ -169,7 +215,7 @@ function App() {
         open={spinWheelOpen}
         onOpenChange={setSpinWheelOpen}
         songs={songs}
-        onDeleteSong={(id) => deleteMutation.mutate(id)}
+        onArchiveSong={(id) => archiveMutation.mutate(id)}
       />
 
       <WheelPreviewModal
@@ -195,19 +241,7 @@ function App() {
             <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium flex items-center gap-2">
-                    {userSong.title}
-                    {userSong.link && (
-                      <a 
-                        href={userSong.link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
-                  </div>
+                  <div className="font-medium">{userSong.title}</div>
                   <div className="text-sm text-muted-foreground">{userSong.artist}</div>
                   {userSong.genres && (
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -216,6 +250,35 @@ function App() {
                           {genre.trim()}
                         </span>
                       ))}
+                    </div>
+                  )}
+                  {(userSong.youtubeUrl || userSong.spotifyUrl || userSong.soundcloudUrl || userSong.instagramUrl || userSong.tiktokUrl) && (
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {userSong.youtubeUrl && (
+                        <a href={userSong.youtubeUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-red-500 flex items-center justify-center hover:bg-red-600 transition-colors" title="YouTube">
+                          <Youtube className="w-3 h-3 text-white" />
+                        </a>
+                      )}
+                      {userSong.spotifyUrl && (
+                        <a href={userSong.spotifyUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-green-500 flex items-center justify-center hover:bg-green-600 transition-colors" title="Spotify">
+                          <span className="text-white text-xs font-bold">●</span>
+                        </a>
+                      )}
+                      {userSong.soundcloudUrl && (
+                        <a href={userSong.soundcloudUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-orange-500 flex items-center justify-center hover:bg-orange-600 transition-colors" title="SoundCloud">
+                          <span className="text-white text-xs font-bold">☁</span>
+                        </a>
+                      )}
+                      {userSong.instagramUrl && (
+                        <a href={userSong.instagramUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center hover:opacity-80 transition-opacity" title="Instagram">
+                          <span className="text-white text-[8px] font-bold">IG</span>
+                        </a>
+                      )}
+                      {userSong.tiktokUrl && (
+                        <a href={userSong.tiktokUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-black flex items-center justify-center hover:bg-gray-800 transition-colors" title="TikTok">
+                          <span className="text-white text-[8px] font-bold">TT</span>
+                        </a>
+                      )}
                     </div>
                   )}
                   {userSong.notes && (
@@ -306,19 +369,70 @@ function App() {
                   />
                   <p className="text-xs text-muted-foreground">Separate multiple genres with commas</p>
                 </div>
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Link</div>
-                  <div className="relative">
-                    <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="YouTube, Spotify, or SoundCloud link"
-                      value={link}
-                      onChange={(e) => setLink(e.target.value)}
-                      className="pl-9"
-                    />
+                
+                {/* Social Media Links */}
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                  <div className="text-sm font-medium">Social Media Links</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded bg-red-500 flex items-center justify-center flex-shrink-0">
+                        <Youtube className="w-4 h-4 text-white" />
+                      </div>
+                      <Input
+                        placeholder="YouTube link"
+                        value={youtubeUrl}
+                        onChange={(e) => setYoutubeUrl(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded bg-green-500 flex items-center justify-center flex-shrink-0">
+                        <span className="text-white text-lg font-bold">●</span>
+                      </div>
+                      <Input
+                        placeholder="Spotify link"
+                        value={spotifyUrl}
+                        onChange={(e) => setSpotifyUrl(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded bg-orange-500 flex items-center justify-center flex-shrink-0">
+                        <span className="text-white text-lg font-bold">☁</span>
+                      </div>
+                      <Input
+                        placeholder="SoundCloud link"
+                        value={soundcloudUrl}
+                        onChange={(e) => setSoundcloudUrl(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0">
+                        <span className="text-white text-sm font-bold">IG</span>
+                      </div>
+                      <Input
+                        placeholder="Instagram link"
+                        value={instagramUrl}
+                        onChange={(e) => setInstagramUrl(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded bg-black flex items-center justify-center flex-shrink-0">
+                        <span className="text-white text-sm font-bold">TT</span>
+                      </div>
+                      <Input
+                        placeholder="TikTok link"
+                        value={tiktokUrl}
+                        onChange={(e) => setTiktokUrl(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">Only YouTube, Spotify, and SoundCloud links are accepted</p>
+                  <p className="text-xs text-muted-foreground">Add links to where people can listen or follow</p>
                 </div>
+                
                 <div className="space-y-2">
                   <div className="text-sm font-medium">Notes</div>
                   <Textarea
@@ -367,7 +481,7 @@ function App() {
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
             <div>
-          <CardTitle>Leaderboard</CardTitle>
+          <CardTitle>Queue</CardTitle>
           <CardDescription>
             {songs.length === 0
               ? 'No songs in queue yet'
@@ -423,7 +537,7 @@ function App() {
                   )
                 }
                 
-                return filteredSongs.map((song: { id: number; title: string; artist: string; notes?: string | null; genres?: string | null; link?: string | null; linkType?: string | null; submittedAt: Date | string; points: number; bananaSticker: boolean; submitterId: string | null }) => {
+                return filteredSongs.map((song: { id: number; title: string; artist: string; notes?: string | null; genres?: string | null; youtubeUrl?: string | null; spotifyUrl?: string | null; soundcloudUrl?: string | null; instagramUrl?: string | null; tiktokUrl?: string | null; submittedAt: Date | string; points: number; bananaSticker: boolean; submitterId: string | null }) => {
                   // Use original index for rank (not filtered index)
                   const originalIndex = songs.findIndex((s: { id: number }) => s.id === song.id)
                   const rank = originalIndex + 1
@@ -431,6 +545,7 @@ function App() {
                   const rankColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
                   const idsToCheck = [clientId, user?.id].filter(Boolean)
                   const isOwnSong = song.submitterId && idsToCheck.includes(song.submitterId)
+                  const hasSocialLinks = song.youtubeUrl || song.spotifyUrl || song.soundcloudUrl || song.instagramUrl || song.tiktokUrl
                   
                   // Calculate percentage chance
                   // Banana songs appear in BOTH sections (banana section + regular section)
@@ -476,23 +591,6 @@ function App() {
                         {song.bananaSticker && <img src="/banana sticker.png" alt="🍌" className="w-5 h-5" title="Banana Sticker - 50% priority pool" />}
                         {song.title}
                         {isOwnSong && <span className="text-xs bg-green-500 text-white px-1.5 py-0.5 rounded">You</span>}
-                        {song.link && (
-                          <a 
-                            href={song.link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                            title={`Open on ${song.linkType === 'youtube' ? 'YouTube' : song.linkType === 'spotify' ? 'Spotify' : 'SoundCloud'}`}
-                          >
-                            {song.linkType === 'youtube' ? (
-                              <Youtube className="w-4 h-4 text-red-500" />
-                            ) : song.linkType === 'spotify' ? (
-                              <span className="text-green-500 text-sm font-bold">●</span>
-                            ) : (
-                              <span className="text-orange-500 text-sm font-bold">☁</span>
-                            )}
-                          </a>
-                        )}
                       </div>
                       <div className="text-sm text-muted-foreground truncate">
                         {song.artist}
@@ -504,6 +602,35 @@ function App() {
                               {genre.trim()}
                             </span>
                           ))}
+                        </div>
+                      )}
+                      {hasSocialLinks && (
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {song.youtubeUrl && (
+                            <a href={song.youtubeUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-red-500 flex items-center justify-center hover:bg-red-600 transition-colors" title="YouTube">
+                              <Youtube className="w-3 h-3 text-white" />
+                            </a>
+                          )}
+                          {song.spotifyUrl && (
+                            <a href={song.spotifyUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-green-500 flex items-center justify-center hover:bg-green-600 transition-colors" title="Spotify">
+                              <span className="text-white text-xs font-bold">●</span>
+                            </a>
+                          )}
+                          {song.soundcloudUrl && (
+                            <a href={song.soundcloudUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-orange-500 flex items-center justify-center hover:bg-orange-600 transition-colors" title="SoundCloud">
+                              <span className="text-white text-xs font-bold">☁</span>
+                            </a>
+                          )}
+                          {song.instagramUrl && (
+                            <a href={song.instagramUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center hover:opacity-80 transition-opacity" title="Instagram">
+                              <span className="text-white text-[8px] font-bold">IG</span>
+                            </a>
+                          )}
+                          {song.tiktokUrl && (
+                            <a href={song.tiktokUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-black flex items-center justify-center hover:bg-gray-800 transition-colors" title="TikTok">
+                              <span className="text-white text-[8px] font-bold">TT</span>
+                            </a>
+                          )}
                         </div>
                       )}
                       {song.notes && (

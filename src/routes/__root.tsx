@@ -55,6 +55,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <ClerkProvider>
           <Header />
           {children}
+          <footer className="py-6 text-center text-sm text-muted-foreground border-t mt-8">
+            this stupid app was made by your host higgz
+          </footer>
           <TanStackDevtools
             config={{
               position: 'bottom-right',
