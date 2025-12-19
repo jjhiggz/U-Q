@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { deleteSong } from '@/server/songs'
-import { ChevronLeft, ChevronRight, Trash2, Pin, Youtube } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, Youtube, Radio } from 'lucide-react'
 
 interface Song {
   id: number
@@ -28,7 +28,28 @@ interface PinnedSongSectionProps {
 
 export function PinnedSongSection({ archivedSongs, isAdmin }: PinnedSongSectionProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isLive, setIsLive] = useState(true)
+  const [viewedSongId, setViewedSongId] = useState<number | null>(null)
+  const prevLengthRef = useRef(archivedSongs.length)
   const queryClient = useQueryClient()
+
+  // When in live mode, always snap to the most recent (index 0)
+  // When not in live mode, maintain position on the same song by ID
+  useEffect(() => {
+    if (isLive) {
+      if (currentIndex !== 0) {
+        setCurrentIndex(0)
+      }
+      setViewedSongId(null)
+    } else if (viewedSongId !== null) {
+      // Find the current song by ID to maintain position
+      const newIndex = archivedSongs.findIndex(s => s.id === viewedSongId)
+      if (newIndex !== -1 && newIndex !== currentIndex) {
+        setCurrentIndex(newIndex)
+      }
+    }
+    prevLengthRef.current = archivedSongs.length
+  }, [isLive, archivedSongs, currentIndex, viewedSongId])
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteSong({ data: id }),
@@ -55,14 +76,25 @@ export function PinnedSongSection({ archivedSongs, isAdmin }: PinnedSongSectionP
 
   const goToOlder = () => {
     if (hasOlder) {
-      setCurrentIndex(currentIndex + 1)
+      const newIndex = currentIndex + 1
+      setIsLive(false) // Exit live mode when navigating to older
+      setCurrentIndex(newIndex)
+      setViewedSongId(archivedSongs[newIndex].id) // Track the song we're viewing
     }
   }
 
   const goToNewer = () => {
     if (hasNewer) {
-      setCurrentIndex(currentIndex - 1)
+      const newIndex = currentIndex - 1
+      setCurrentIndex(newIndex)
+      setViewedSongId(archivedSongs[newIndex].id) // Track the song we're viewing
     }
+  }
+
+  const goLive = () => {
+    setIsLive(true)
+    setCurrentIndex(0)
+    setViewedSongId(null) // Clear tracked song when going live
   }
 
   const formatArchivedTime = (date: Date | string) => {
@@ -91,12 +123,6 @@ export function PinnedSongSection({ archivedSongs, isAdmin }: PinnedSongSectionP
           {/* Song content */}
           <div className="flex-1 py-4 px-2">
             <div className="flex items-start gap-4">
-              {/* Pin icon and label */}
-              <div className="flex flex-col items-center gap-1 text-yellow-600">
-                <Pin className="w-6 h-6 fill-yellow-500" />
-                <span className="text-xs font-semibold">NOW</span>
-              </div>
-
               {/* Song details */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -211,32 +237,73 @@ export function PinnedSongSection({ archivedSongs, isAdmin }: PinnedSongSectionP
               )}
             </div>
 
-            {/* Carousel indicator - dots go left (oldest) to right (newest) */}
-            {archivedSongs.length > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-3">
-                <span className="text-xs text-muted-foreground">
-                  {archivedSongs.length - currentIndex} of {archivedSongs.length} picks
-                </span>
-                <div className="flex gap-1">
-                  {archivedSongs.slice(0, Math.min(archivedSongs.length, 10)).map((_, idx) => {
-                    // Reverse the visual order: leftmost dot = oldest (highest index), rightmost = newest (index 0)
-                    const reversedIdx = archivedSongs.length - 1 - idx
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => setCurrentIndex(reversedIdx)}
-                        className={`w-2 h-2 rounded-full transition-colors ${
-                          reversedIdx === currentIndex ? 'bg-yellow-500' : 'bg-gray-300 hover:bg-gray-400'
-                        }`}
-                      />
-                    )
-                  })}
-                  {archivedSongs.length > 10 && (
-                    <span className="text-xs text-muted-foreground ml-1">...</span>
+            {/* Carousel indicator and live button */}
+            <div className="flex justify-between items-center mt-3">
+              {/* Left spacer for centering */}
+              <div className="w-20" />
+              
+              {/* Center: dots and count */}
+              {archivedSongs.length > 1 ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {archivedSongs.length - currentIndex} of {archivedSongs.length} picks
+                  </span>
+                  <div className="flex gap-1">
+                    {archivedSongs.slice(0, Math.min(archivedSongs.length, 10)).map((_, idx) => {
+                      // Reverse the visual order: leftmost dot = oldest (highest index), rightmost = newest (index 0)
+                      const reversedIdx = archivedSongs.length - 1 - idx
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setCurrentIndex(reversedIdx)
+                            if (reversedIdx !== 0) {
+                              setIsLive(false)
+                              setViewedSongId(archivedSongs[reversedIdx].id)
+                            } else {
+                              setIsLive(true)
+                              setViewedSongId(null)
+                            }
+                          }}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            reversedIdx === currentIndex ? 'bg-yellow-500' : 'bg-gray-300 hover:bg-gray-400'
+                          }`}
+                        />
+                      )
+                    })}
+                    {archivedSongs.length > 10 && (
+                      <span className="text-xs text-muted-foreground ml-1">...</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div />
+              )}
+              
+              {/* Right: Live button */}
+              <button
+                onClick={goLive}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all ${
+                  isLive 
+                    ? 'bg-red-500 text-white cursor-default' 
+                    : 'bg-gray-200 text-gray-600 cursor-pointer hover:bg-red-100 hover:text-red-500'
+                }`}
+                title={isLive ? 'Live - showing latest pick' : 'Click to go live'}
+              >
+                <div className="relative">
+                  <Radio className="w-3.5 h-3.5" />
+                  {isLive && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-white rounded-full animate-pulse" />
+                  )}
+                  {!isLive && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-bounce" />
                   )}
                 </div>
-              </div>
-            )}
+                <span className={`text-xs font-semibold ${!isLive ? 'animate-pulse' : ''}`}>
+                  LIVE
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Newer (right) button */}
@@ -244,9 +311,9 @@ export function PinnedSongSection({ archivedSongs, isAdmin }: PinnedSongSectionP
             variant="ghost"
             size="icon"
             onClick={goToNewer}
-            disabled={!hasNewer}
+            disabled={!hasNewer || isLive}
             className="h-full rounded-none px-3 hover:bg-yellow-500/20 disabled:opacity-30"
-            title="Newer pick"
+            title={isLive ? 'Already on latest' : 'Newer pick'}
           >
             <ChevronRight className="w-5 h-5" />
           </Button>
