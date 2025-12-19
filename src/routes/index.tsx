@@ -9,7 +9,7 @@ import { SpinWheelModal } from '@/components/SpinWheelModal'
 import { WheelPreviewModal } from '@/components/WheelPreviewModal'
 import { getSongs, submitSong, clearQueue, deleteSong, addPoints, toggleBananaSticker } from '@/server/songs'
 import { getClientId } from '@/lib/client-id'
-import { Music, Trash2, Sparkles, Plus, Eye, CheckCircle } from 'lucide-react'
+import { Music, Trash2, Sparkles, Plus, Eye, CheckCircle, Search } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -24,6 +24,7 @@ function App() {
   const [previewSong, setPreviewSong] = useState<{ id: number; title: string; artist: string; points: number; bananaSticker: boolean } | null>(null)
   const [customPointsSongId, setCustomPointsSongId] = useState<number | null>(null)
   const [customPointsValue, setCustomPointsValue] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const queryClient = useQueryClient()
   const { user } = useUser()
   
@@ -264,12 +265,27 @@ function App() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Leaderboard</CardTitle>
-          <CardDescription>
-            {songs.length === 0
-              ? 'No songs in queue yet'
-              : `${songs.length} song${songs.length === 1 ? '' : 's'} — ranked by points`}
-          </CardDescription>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle>Leaderboard</CardTitle>
+              <CardDescription>
+                {songs.length === 0
+                  ? 'No songs in queue yet'
+                  : `${songs.length} song${songs.length === 1 ? '' : 's'} — ranked by points`}
+              </CardDescription>
+            </div>
+            {songs.length > 0 && (
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search songs..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -289,8 +305,26 @@ function App() {
                 const allPointsTotal = songs.reduce((sum: number, s: { points: number }) => sum + (s.points || 1), 0)
                 const hasBanana = bananaSongs.length > 0
                 
-                return songs.map((song: { id: number; title: string; artist: string; submittedAt: Date | string; points: number; bananaSticker: boolean; submitterId: string | null }, index: number) => {
-                  const rank = index + 1
+                // Filter songs based on search query
+                const query = searchQuery.toLowerCase().trim()
+                const filteredSongs = query
+                  ? songs.filter((s: { title: string; artist: string }) => 
+                      s.title.toLowerCase().includes(query) || s.artist.toLowerCase().includes(query)
+                    )
+                  : songs
+                
+                if (filteredSongs.length === 0 && query) {
+                  return (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No songs match "{searchQuery}"
+                    </div>
+                  )
+                }
+                
+                return filteredSongs.map((song: { id: number; title: string; artist: string; submittedAt: Date | string; points: number; bananaSticker: boolean; submitterId: string | null }) => {
+                  // Use original index for rank (not filtered index)
+                  const originalIndex = songs.findIndex((s: { id: number }) => s.id === song.id)
+                  const rank = originalIndex + 1
                   const isTop3 = rank <= 3
                   const rankColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
                   const idsToCheck = [clientId, user?.id].filter(Boolean)
