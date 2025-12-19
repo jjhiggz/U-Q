@@ -15,6 +15,7 @@ interface Song {
   title: string
   artist: string
   points: number
+  bananaSticker: boolean
 }
 
 interface SpinWheelModalProps {

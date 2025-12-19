@@ -7,7 +7,7 @@ export default function Header() {
     <header className="p-4 flex items-center justify-between bg-gray-800 text-white shadow-lg">
       <Link to="/" className="flex items-center gap-2">
         <Music className="w-6 h-6" />
-        <h1 className="text-xl font-semibold">Music Queue</h1>
+        <h1 className="text-xl font-semibold">Spin Pit</h1>
       </Link>
       <ClerkHeader />
     </header>

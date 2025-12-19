@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, timestamp, integer } from 'drizzle-orm/pg-core'
+import { pgTable, serial, varchar, timestamp, integer, boolean } from 'drizzle-orm/pg-core'
 
 export const songs = pgTable('songs', {
   id: serial('id').primaryKey(),
@@ -7,6 +7,8 @@ export const songs = pgTable('songs', {
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   status: varchar('status', { length: 50 }).default('pending').notNull(),
   points: integer('points').default(1).notNull(),
+  bananaSticker: boolean('banana_sticker').default(false).notNull(),
+  submitterId: varchar('submitter_id', { length: 255 }),
 })
 
 export type Song = typeof songs.$inferSelect

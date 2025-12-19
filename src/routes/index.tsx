@@ -1,13 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/clerk-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SpinWheelModal } from '@/components/SpinWheelModal'
-import { getSongs, submitSong, clearQueue, deleteSong, addPoints } from '@/server/songs'
-import { Music, Trash2, Sparkles, Plus } from 'lucide-react'
+import { WheelPreviewModal } from '@/components/WheelPreviewModal'
+import { getSongs, submitSong, clearQueue, deleteSong, addPoints, toggleBananaSticker } from '@/server/songs'
+import { getClientId } from '@/lib/client-id'
+import { Music, Trash2, Sparkles, Plus, Eye, CheckCircle } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -19,6 +21,7 @@ function App() {
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
   const [spinWheelOpen, setSpinWheelOpen] = useState(false)
+  const [previewSong, setPreviewSong] = useState<{ id: number; title: string; artist: string; points: number; bananaSticker: boolean } | null>(null)
   const [customPointsSongId, setCustomPointsSongId] = useState<number | null>(null)
   const [customPointsValue, setCustomPointsValue] = useState('')
   const queryClient = useQueryClient()
@@ -26,14 +29,30 @@ function App() {
   
   const userEmail = user?.primaryEmailAddress?.emailAddress
   const isKnownAdminUser = userEmail ? ADMIN_EMAILS.includes(userEmail) : false
+  
+  // Get the anonymous client ID (always available)
+  const clientId = useMemo(() => getClientId(), [])
+  
+  // For submitting, prefer Clerk user ID if logged in
+  const submitterId = user?.id || clientId
 
   const { data: songs = [], isLoading } = useQuery({
     queryKey: ['songs'],
     queryFn: () => getSongs(),
   })
 
+  // Check if user already has a song in the queue
+  // Check both Clerk user ID and anonymous client ID to handle login/logout transitions
+  const userSong = useMemo(() => {
+    const idsToCheck = [clientId, user?.id].filter(Boolean)
+    if (idsToCheck.length === 0) return null
+    return songs.find((s: { submitterId: string | null }) => 
+      s.submitterId && idsToCheck.includes(s.submitterId)
+    ) ?? null
+  }, [songs, clientId, user?.id])
+
   const submitMutation = useMutation({
-    mutationFn: (data: { title: string; artist: string }) => submitSong({ data }),
+    mutationFn: (data: { title: string; artist: string; submitterId: string; allSubmitterIds: string[] }) => submitSong({ data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['songs'] })
       setTitle('')
@@ -64,10 +83,19 @@ function App() {
     },
   })
 
+  const bananaMutation = useMutation({
+    mutationFn: (data: { id: number; value: boolean }) => toggleBananaSticker({ data }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['songs'] })
+    },
+  })
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (title.trim() && artist.trim()) {
-      submitMutation.mutate({ title: title.trim(), artist: artist.trim() })
+    // Admins can always submit, regular users only if they don't have a song
+    if (title.trim() && artist.trim() && (isKnownAdminUser || !userSong)) {
+      const allSubmitterIds = isKnownAdminUser ? [] : [clientId, user?.id].filter((id): id is string => Boolean(id))
+      submitMutation.mutate({ title: title.trim(), artist: artist.trim(), submitterId, allSubmitterIds })
     }
   }
 
@@ -76,7 +104,7 @@ function App() {
       <div className="mb-8 text-center">
         <h1 className="text-4xl font-bold mb-2 flex items-center justify-center gap-2">
           <Music className="w-10 h-10" />
-          Music Queue
+          Spin Pit
         </h1>
         <p className="text-muted-foreground">
           Submit a song for review during the livestream
@@ -120,37 +148,98 @@ function App() {
         onDeleteSong={(id) => deleteMutation.mutate(id)}
       />
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Submit a Song</CardTitle>
-          <CardDescription>
-            Enter the song title and artist name
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Input
-                placeholder="Song Title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
+      <WheelPreviewModal
+        open={previewSong !== null}
+        onOpenChange={(open) => !open && setPreviewSong(null)}
+        song={previewSong}
+        allSongs={songs}
+      />
+
+      {/* User's existing song card - only show for non-admins who have a song */}
+      {userSong && !isKnownAdminUser && (
+        <Card className="mb-6 border-green-500/50 bg-green-500/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-500" />
+              Your Song is in the Queue!
+            </CardTitle>
+            <CardDescription>
+              You can submit another song once "{userSong.title}" gets picked, or remove it to submit a different one
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="font-medium">{userSong.title}</div>
+                  <div className="text-sm text-muted-foreground">{userSong.artist}</div>
+                  <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    {userSong.points} points
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                  onClick={() => {
+                    if (confirm(`Remove "${userSong.title}" from the queue?`)) {
+                      deleteMutation.mutate(userSong.id)
+                    }
+                  }}
+                  disabled={deleteMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Remove
+                </Button>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Input
-                placeholder="Artist Name"
-                value={artist}
-                onChange={(e) => setArtist(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" disabled={submitMutation.isPending} className="w-full">
-              {submitMutation.isPending ? 'Submitting...' : 'Submit Song'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Submit form - always show for admins, only show for non-admins without a song */}
+      {(isKnownAdminUser || !userSong) && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Submit a Song</CardTitle>
+            <CardDescription>
+              {isKnownAdminUser 
+                ? 'As an admin, you can submit unlimited songs'
+                : 'Enter the song title and artist name'
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  placeholder="Song Title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Input
+                  placeholder="Artist Name"
+                  value={artist}
+                  onChange={(e) => setArtist(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={submitMutation.isPending} className="w-full">
+                {submitMutation.isPending ? 'Submitting...' : 'Submit Song'}
+              </Button>
+              {submitMutation.isError && (
+                <p className="text-sm text-red-500 text-center">
+                  {submitMutation.error instanceof Error ? submitMutation.error.message : 'Failed to submit song'}
+                </p>
+              )}
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mb-6 border-purple-500/30 bg-gradient-to-br from-purple-500/5 to-pink-500/5">
         <CardHeader className="pb-3">
@@ -193,15 +282,52 @@ function App() {
             </div>
           ) : (
             <div className="space-y-2">
-              {songs.map((song: { id: number; title: string; artist: string; submittedAt: Date | string; points: number }, index: number) => {
-                const rank = index + 1
-                const isTop3 = rank <= 3
-                const rankColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
+              {(() => {
+                // Pre-calculate totals for percentage calculations
+                const bananaSongs = songs.filter((s: { bananaSticker: boolean }) => s.bananaSticker)
+                const bananaPointsTotal = bananaSongs.reduce((sum: number, s: { points: number }) => sum + (s.points || 1), 0)
+                const allPointsTotal = songs.reduce((sum: number, s: { points: number }) => sum + (s.points || 1), 0)
+                const hasBanana = bananaSongs.length > 0
                 
-                return (
+                return songs.map((song: { id: number; title: string; artist: string; submittedAt: Date | string; points: number; bananaSticker: boolean; submitterId: string | null }, index: number) => {
+                  const rank = index + 1
+                  const isTop3 = rank <= 3
+                  const rankColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
+                  const idsToCheck = [clientId, user?.id].filter(Boolean)
+                  const isOwnSong = song.submitterId && idsToCheck.includes(song.submitterId)
+                  
+                  // Calculate percentage chance
+                  // Banana songs appear in BOTH sections (banana section + regular section)
+                  // Regular songs only appear in regular section
+                  const songPoints = song.points || 1
+                  let percentChance = 0
+                  
+                  if (song.bananaSticker && hasBanana) {
+                    // Banana songs get two chances:
+                    // 1. Banana section (50%): songPoints / bananaPointsTotal
+                    // 2. Regular section (50%): songPoints / allPointsTotal
+                    const chanceInBanana = bananaPointsTotal > 0 ? (songPoints / bananaPointsTotal) * 0.5 : 0
+                    const chanceInRegular = allPointsTotal > 0 ? (songPoints / allPointsTotal) * 0.5 : 0
+                    percentChance = (chanceInBanana + chanceInRegular) * 100
+                  } else {
+                    // Non-banana songs only in regular section
+                    const poolChance = hasBanana ? 0.5 : 1
+                    const chanceInRegular = allPointsTotal > 0 ? songPoints / allPointsTotal : 0
+                    percentChance = chanceInRegular * poolChance * 100
+                  }
+                  
+                  return (
                   <div
                     key={song.id}
-                    className={`flex items-center gap-4 p-4 border rounded-lg hover:bg-accent transition-colors ${isTop3 ? 'border-purple-500/30 bg-purple-500/5' : ''}`}
+                    className={`flex items-center gap-4 p-4 border rounded-lg hover:bg-accent transition-colors ${
+                      isOwnSong 
+                        ? 'border-green-500 bg-green-500/10 ring-1 ring-green-500/30' 
+                        : song.bananaSticker 
+                          ? 'border-yellow-400 bg-yellow-50' 
+                          : isTop3 
+                            ? 'border-purple-500/30 bg-purple-500/5' 
+                            : ''
+                    }`}
                   >
                     {/* Rank */}
                     <div className={`w-8 text-center font-bold text-lg ${isTop3 ? rankColors[rank - 1] : 'text-muted-foreground'}`}>
@@ -210,7 +336,11 @@ function App() {
                     
                     {/* Song info */}
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{song.title}</div>
+                      <div className="font-medium truncate flex items-center gap-2">
+                        {song.bananaSticker && <img src="/banana sticker.png" alt="🍌" className="w-5 h-5" title="Banana Sticker - 50% priority pool" />}
+                        {song.title}
+                        {isOwnSong && <span className="text-xs bg-green-500 text-white px-1.5 py-0.5 rounded">You</span>}
+                      </div>
                       <div className="text-sm text-muted-foreground truncate">
                         {song.artist}
                       </div>
@@ -234,12 +364,12 @@ function App() {
                               variant="ghost"
                               className="h-7 px-2 text-xs"
                               onClick={() => {
-                                const pts = parseInt(customPointsValue)
+                                const pts = parseInt(customPointsValue, 10)
                                 if (pts > 0) {
                                   addPointsMutation.mutate({ id: song.id, points: pts })
                                 }
                               }}
-                              disabled={!customPointsValue || parseInt(customPointsValue) <= 0}
+                              disabled={!customPointsValue || parseInt(customPointsValue, 10) <= 0}
                             >
                               Add
                             </Button>
@@ -292,6 +422,15 @@ function App() {
                             <Button
                               size="sm"
                               variant="ghost"
+                              className={`h-7 px-2 text-xs ${song.bananaSticker ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+                              onClick={() => bananaMutation.mutate({ id: song.id, value: !song.bananaSticker })}
+                              title={song.bananaSticker ? 'Remove banana sticker' : 'Add banana sticker (50% priority)'}
+                            >
+                              <img src="/banana sticker.png" alt="🍌" className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-100"
                               onClick={() => {
                                 if (confirm(`Delete "${song.title}" by ${song.artist}?`)) {
@@ -306,6 +445,19 @@ function App() {
                       </div>
                     )}
                     
+                    {/* See in wheel button - only show if 2% or higher chance */}
+                    {percentChance >= 2 && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setPreviewSong(song)}
+                        title="See chances on wheel"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    )}
+                    
                     {/* Points badge */}
                     <div className="flex items-center gap-1 px-3 py-1.5 bg-purple-500/10 rounded-full">
                       <Sparkles className="w-3 h-3 text-purple-500" />
@@ -314,7 +466,8 @@ function App() {
                     </div>
                   </div>
                 )
-              })}
+              })
+              })()}
             </div>
           )}
         </CardContent>
