@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/clerk-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,6 +35,13 @@ function App() {
   
   const userEmail = user?.primaryEmailAddress?.emailAddress
   const isKnownAdminUser = userEmail ? ADMIN_EMAILS.includes(userEmail) : false
+  
+  // Collapse submit form by default for admin users
+  useEffect(() => {
+    if (isKnownAdminUser) {
+      setSubmitFormOpen(false)
+    }
+  }, [isKnownAdminUser])
   
   // Get the anonymous client ID (always available)
   const clientId = useMemo(() => getClientId(), [])
