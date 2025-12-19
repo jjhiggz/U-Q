@@ -387,30 +387,60 @@ function App() {
                           </div>
                         ) : (
                           <>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
-                              onClick={() => addPointsMutation.mutate({ id: song.id, points: 1 })}
-                            >
-                              +1
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
-                              onClick={() => addPointsMutation.mutate({ id: song.id, points: 5 })}
-                            >
-                              +5
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
-                              onClick={() => addPointsMutation.mutate({ id: song.id, points: 10 })}
-                            >
-                              +10
-                            </Button>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
+                                  onClick={() => addPointsMutation.mutate({ id: song.id, points: 1 })}
+                                >
+                                  +1
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
+                                  onClick={() => addPointsMutation.mutate({ id: song.id, points: 5 })}
+                                >
+                                  +5
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
+                                  onClick={() => addPointsMutation.mutate({ id: song.id, points: 10 })}
+                                >
+                                  +10
+                                </Button>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-100"
+                                  onClick={() => addPointsMutation.mutate({ id: song.id, points: -1 })}
+                                >
+                                  -1
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-100"
+                                  onClick={() => addPointsMutation.mutate({ id: song.id, points: -5 })}
+                                >
+                                  -5
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-100"
+                                  onClick={() => addPointsMutation.mutate({ id: song.id, points: -10 })}
+                                >
+                                  -10
+                                </Button>
+                              </div>
+                            </div>
                             <Button
                               size="sm"
                               variant="ghost"

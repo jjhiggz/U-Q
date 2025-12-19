@@ -83,7 +83,8 @@ export const addPoints = createServerFn({ method: 'POST' })
   .inputValidator((data: { id: number; points: number }) => data)
   .handler(async ({ data }) => {
     await db.update(songs)
-      .set({ points: sql`${songs.points} + ${data.points}` })
+      // Never allow points to drop below 1
+      .set({ points: sql`GREATEST(${songs.points} + ${data.points}, 1)` })
       .where(eq(songs.id, data.id))
     return { success: true }
   })
