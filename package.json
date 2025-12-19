@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3000",
-    "vercel-build": "tsx scripts/migrate.ts && vite build",
+    "vercel-build": "tsx scripts/migrate.ts && vite build && tsx scripts/vercel-output.ts",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
@@ -54,6 +54,7 @@
     "@types/pg": "^8.10.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@vercel/nft": "^0.30.4",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^16.0.0",
     "jsdom": "^27.0.0",
