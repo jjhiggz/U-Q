@@ -121,10 +121,10 @@ function App() {
       <div className="mb-8 text-center">
         <h1 className="text-4xl font-bold mb-2 flex items-center justify-center gap-2">
           <Music className="w-10 h-10" />
-          Spin Pit
+          UQ
         </h1>
         <p className="text-muted-foreground">
-          Submit a song for review during the livestream
+          Your Queue — submit songs for review
         </p>
       </div>
 

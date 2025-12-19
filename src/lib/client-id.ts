@@ -1,4 +1,4 @@
-const CLIENT_ID_KEY = 'spin-pit-client-id'
+const CLIENT_ID_KEY = 'uq-client-id'
 
 export const getClientId = (): string => {
   if (typeof window === 'undefined') {
