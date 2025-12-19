@@ -6,12 +6,16 @@ export const songs = pgTable('songs', {
   artist: varchar('artist', { length: 255 }).notNull(),
   notes: text('notes'),
   genres: varchar('genres', { length: 500 }),
-  // Social media links
+  // Song link - the actual song to listen to
+  songLink: varchar('song_link', { length: 500 }),
+  // Social media links - for following the artist
   youtubeUrl: varchar('youtube_url', { length: 500 }),
-  spotifyUrl: varchar('spotify_url', { length: 500 }),
   soundcloudUrl: varchar('soundcloud_url', { length: 500 }),
   instagramUrl: varchar('instagram_url', { length: 500 }),
   tiktokUrl: varchar('tiktok_url', { length: 500 }),
+  facebookUrl: varchar('facebook_url', { length: 500 }),
+  // Legacy field (keeping for backward compatibility)
+  spotifyUrl: varchar('spotify_url', { length: 500 }),
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   status: varchar('status', { length: 50 }).default('pending').notNull(),
   points: integer('points').default(1).notNull(),

@@ -9,9 +9,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { SpinWheelModal } from '@/components/SpinWheelModal'
 import { WheelPreviewModal } from '@/components/WheelPreviewModal'
 import { PinnedSongSection } from '@/components/PinnedSongSection'
-import { getSongs, getArchivedSongs, submitSong, clearQueue, deleteSong, archiveSong, addPoints, updateBananaStickers } from '@/server/songs'
+import { getSongs, getArchivedSongs, submitSong, clearQueue, deleteSong, archiveSong, addPoints, updateBananaStickers, updateSong } from '@/server/songs'
 import { getClientId } from '@/lib/client-id'
-import { Music, Trash2, Sparkles, Plus, Eye, CheckCircle, Search, Youtube, ChevronDown, ChevronUp } from 'lucide-react'
+import { Music, Trash2, Sparkles, Plus, Eye, CheckCircle, Search, ChevronDown, ChevronUp, Pencil, X, Link } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -24,17 +24,32 @@ function App() {
   const [artist, setArtist] = useState('')
   const [notes, setNotes] = useState('')
   const [genres, setGenres] = useState('')
+  const [songLink, setSongLink] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
-  const [spotifyUrl, setSpotifyUrl] = useState('')
   const [soundcloudUrl, setSoundcloudUrl] = useState('')
   const [instagramUrl, setInstagramUrl] = useState('')
   const [tiktokUrl, setTiktokUrl] = useState('')
+  const [facebookUrl, setFacebookUrl] = useState('')
+  const [socialLinksOpen, setSocialLinksOpen] = useState(false)
   const [spinWheelOpen, setSpinWheelOpen] = useState(false)
   const [previewSong, setPreviewSong] = useState<{ id: number; title: string; artist: string; points: number; bananaStickers: number } | null>(null)
   const [customPointsSongId, setCustomPointsSongId] = useState<number | null>(null)
   const [customPointsValue, setCustomPointsValue] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [submitFormOpen, setSubmitFormOpen] = useState(true)
+  // Edit state
+  const [editingSongId, setEditingSongId] = useState<number | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editArtist, setEditArtist] = useState('')
+  const [editNotes, setEditNotes] = useState('')
+  const [editGenres, setEditGenres] = useState('')
+  const [editSongLink, setEditSongLink] = useState('')
+  const [editYoutubeUrl, setEditYoutubeUrl] = useState('')
+  const [editSoundcloudUrl, setEditSoundcloudUrl] = useState('')
+  const [editInstagramUrl, setEditInstagramUrl] = useState('')
+  const [editTiktokUrl, setEditTiktokUrl] = useState('')
+  const [editFacebookUrl, setEditFacebookUrl] = useState('')
+  const [editSocialLinksOpen, setEditSocialLinksOpen] = useState(false)
   const queryClient = useQueryClient()
   const { user } = useUser()
   
@@ -82,11 +97,12 @@ function App() {
       artist: string
       notes?: string
       genres?: string
+      songLink?: string
       youtubeUrl?: string
-      spotifyUrl?: string
       soundcloudUrl?: string
       instagramUrl?: string
       tiktokUrl?: string
+      facebookUrl?: string
       submitterId: string
       allSubmitterIds: string[] 
     }) => submitSong({ data }),
@@ -96,11 +112,36 @@ function App() {
       setArtist('')
       setNotes('')
       setGenres('')
+      setSongLink('')
       setYoutubeUrl('')
-      setSpotifyUrl('')
       setSoundcloudUrl('')
       setInstagramUrl('')
       setTiktokUrl('')
+      setFacebookUrl('')
+      setSocialLinksOpen(false)
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: (data: { 
+      id: number
+      title: string
+      artist: string
+      notes?: string
+      genres?: string
+      songLink?: string
+      youtubeUrl?: string
+      soundcloudUrl?: string
+      instagramUrl?: string
+      tiktokUrl?: string
+      facebookUrl?: string
+      submitterId: string
+      isAdmin?: boolean
+    }) => updateSong({ data }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['songs'] })
+      setEditingSongId(null)
+      setEditSocialLinksOpen(false)
     },
   })
 
@@ -153,13 +194,70 @@ function App() {
         artist: artist.trim(), 
         notes: notes.trim() || undefined,
         genres: genres.trim() || undefined,
+        songLink: songLink.trim() || undefined,
         youtubeUrl: youtubeUrl.trim() || undefined,
-        spotifyUrl: spotifyUrl.trim() || undefined,
         soundcloudUrl: soundcloudUrl.trim() || undefined,
         instagramUrl: instagramUrl.trim() || undefined,
         tiktokUrl: tiktokUrl.trim() || undefined,
+        facebookUrl: facebookUrl.trim() || undefined,
         submitterId, 
         allSubmitterIds 
+      })
+    }
+  }
+
+  // Helper to get song link from legacy fields or new field
+  const getSongLinkFromSong = (song: { songLink?: string | null; spotifyUrl?: string | null }) => 
+    song.songLink || song.spotifyUrl || ''
+
+  // Start editing a song
+  const startEditing = (song: { id: number; title: string; artist: string; notes?: string | null; genres?: string | null; songLink?: string | null; spotifyUrl?: string | null; youtubeUrl?: string | null; soundcloudUrl?: string | null; instagramUrl?: string | null; tiktokUrl?: string | null; facebookUrl?: string | null }) => {
+    setEditingSongId(song.id)
+    setEditTitle(song.title)
+    setEditArtist(song.artist)
+    setEditNotes(song.notes || '')
+    setEditGenres(song.genres || '')
+    setEditSongLink(getSongLinkFromSong(song))
+    setEditYoutubeUrl(song.youtubeUrl || '')
+    setEditSoundcloudUrl(song.soundcloudUrl || '')
+    setEditInstagramUrl(song.instagramUrl || '')
+    setEditTiktokUrl(song.tiktokUrl || '')
+    setEditFacebookUrl(song.facebookUrl || '')
+    // Auto-expand social links if any exist
+    setEditSocialLinksOpen(!!(song.youtubeUrl || song.soundcloudUrl || song.instagramUrl || song.tiktokUrl || song.facebookUrl))
+  }
+
+  const cancelEditing = () => {
+    setEditingSongId(null)
+    setEditTitle('')
+    setEditArtist('')
+    setEditNotes('')
+    setEditGenres('')
+    setEditSongLink('')
+    setEditYoutubeUrl('')
+    setEditSoundcloudUrl('')
+    setEditInstagramUrl('')
+    setEditTiktokUrl('')
+    setEditFacebookUrl('')
+    setEditSocialLinksOpen(false)
+  }
+
+  const handleEditSubmit = (songId: number) => {
+    if (editTitle.trim() && editArtist.trim()) {
+      updateMutation.mutate({
+        id: songId,
+        title: editTitle.trim(),
+        artist: editArtist.trim(),
+        notes: editNotes.trim() || undefined,
+        genres: editGenres.trim() || undefined,
+        songLink: editSongLink.trim() || undefined,
+        youtubeUrl: editYoutubeUrl.trim() || undefined,
+        soundcloudUrl: editSoundcloudUrl.trim() || undefined,
+        instagramUrl: editInstagramUrl.trim() || undefined,
+        tiktokUrl: editTiktokUrl.trim() || undefined,
+        facebookUrl: editFacebookUrl.trim() || undefined,
+        submitterId,
+        isAdmin: isKnownAdminUser,
       })
     }
   }
@@ -234,79 +332,261 @@ function App() {
               Your Song is in the Queue!
             </CardTitle>
             <CardDescription>
-              You can submit another song once "{userSong.title}" gets picked, or remove it to submit a different one
+              You can edit your submission, or remove it to submit a different song
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium">{userSong.title}</div>
-                  <div className="text-sm text-muted-foreground">{userSong.artist}</div>
-                  {userSong.genres && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {userSong.genres.split(',').map((genre: string) => (
-                        <span key={genre.trim()} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
-                          {genre.trim()}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {(userSong.youtubeUrl || userSong.spotifyUrl || userSong.soundcloudUrl || userSong.instagramUrl || userSong.tiktokUrl) && (
-                    <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      {userSong.youtubeUrl && (
-                        <a href={userSong.youtubeUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-red-500 flex items-center justify-center hover:bg-red-600 transition-colors" title="YouTube">
-                          <Youtube className="w-3 h-3 text-white" />
-                        </a>
-                      )}
-                      {userSong.spotifyUrl && (
-                        <a href={userSong.spotifyUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-green-500 flex items-center justify-center hover:bg-green-600 transition-colors" title="Spotify">
-                          <span className="text-white text-xs font-bold">●</span>
-                        </a>
-                      )}
-                      {userSong.soundcloudUrl && (
-                        <a href={userSong.soundcloudUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-orange-500 flex items-center justify-center hover:bg-orange-600 transition-colors" title="SoundCloud">
-                          <span className="text-white text-xs font-bold">☁</span>
-                        </a>
-                      )}
-                      {userSong.instagramUrl && (
-                        <a href={userSong.instagramUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center hover:opacity-80 transition-opacity" title="Instagram">
-                          <span className="text-white text-[8px] font-bold">IG</span>
-                        </a>
-                      )}
-                      {userSong.tiktokUrl && (
-                        <a href={userSong.tiktokUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-black flex items-center justify-center hover:bg-gray-800 transition-colors" title="TikTok">
-                          <span className="text-white text-[8px] font-bold">TT</span>
-                        </a>
-                      )}
-                    </div>
-                  )}
-                  {userSong.notes && (
-                    <div className="text-xs text-muted-foreground mt-1 italic">
-                      "{userSong.notes}"
-                    </div>
-                  )}
-                  <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    {userSong.points} points
+            {editingSongId === userSong.id ? (
+              // Edit form
+              <div className="space-y-4 p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Song Title *</div>
+                    <Input
+                      placeholder="Enter song title"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Artist Name *</div>
+                    <Input
+                      placeholder="Enter artist name"
+                      value={editArtist}
+                      onChange={(e) => setEditArtist(e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                  onClick={() => {
-                    if (confirm(`Remove "${userSong.title}" from the queue?`)) {
-                      deleteMutation.mutate(userSong.id)
-                    }
-                  }}
-                  disabled={deleteMutation.isPending}
-                >
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  Remove
-                </Button>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Genres</div>
+                  <Input
+                    placeholder="e.g. Rock, Indie, Electronic"
+                    value={editGenres}
+                    onChange={(e) => setEditGenres(e.target.value)}
+                  />
+                </div>
+                {/* Song Link */}
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Song Link</div>
+                  <Input
+                    placeholder="Link to your song (YouTube, Spotify, SoundCloud, etc.)"
+                    value={editSongLink}
+                    onChange={(e) => setEditSongLink(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">No Apple Music or other paid streaming services</p>
+                </div>
+                {/* Social Links - Collapsible */}
+                <div className="border rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setEditSocialLinksOpen(!editSocialLinksOpen)}
+                    className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Artist Socials</span>
+                      <span className="text-xs text-muted-foreground">(optional)</span>
+                      {(editYoutubeUrl || editSoundcloudUrl || editInstagramUrl || editTiktokUrl || editFacebookUrl) && (
+                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                          {[editYoutubeUrl, editSoundcloudUrl, editInstagramUrl, editTiktokUrl, editFacebookUrl].filter(Boolean).length} added
+                        </span>
+                      )}
+                    </div>
+                    {editSocialLinksOpen ? (
+                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  {editSocialLinksOpen && (
+                    <div className="p-3 space-y-3 border-t">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded bg-red-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-sm font-bold">YT</span>
+                          </div>
+                          <Input
+                            placeholder="YouTube channel"
+                            value={editYoutubeUrl}
+                            onChange={(e) => setEditYoutubeUrl(e.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded bg-orange-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-lg font-bold">☁</span>
+                          </div>
+                          <Input
+                            placeholder="SoundCloud profile"
+                            value={editSoundcloudUrl}
+                            onChange={(e) => setEditSoundcloudUrl(e.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-sm font-bold">IG</span>
+                          </div>
+                          <Input
+                            placeholder="Instagram profile"
+                            value={editInstagramUrl}
+                            onChange={(e) => setEditInstagramUrl(e.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded bg-black flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-sm font-bold">TT</span>
+                          </div>
+                          <Input
+                            placeholder="TikTok profile"
+                            value={editTiktokUrl}
+                            onChange={(e) => setEditTiktokUrl(e.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-sm font-bold">FB</span>
+                          </div>
+                          <Input
+                            placeholder="Facebook page"
+                            value={editFacebookUrl}
+                            onChange={(e) => setEditFacebookUrl(e.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Notes</div>
+                  <Textarea
+                    placeholder="Any additional notes?"
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => handleEditSubmit(userSong.id)}
+                    disabled={updateMutation.isPending || !editTitle.trim() || !editArtist.trim()}
+                  >
+                    {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                  <Button variant="outline" onClick={cancelEditing}>
+                    Cancel
+                  </Button>
+                </div>
+                {updateMutation.isError && (
+                  <p className="text-sm text-red-500">
+                    {updateMutation.error instanceof Error ? updateMutation.error.message : 'Failed to update song'}
+                  </p>
+                )}
               </div>
-            </div>
+            ) : (
+              // Display view
+              <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium">{userSong.title}</div>
+                    <div className="text-sm text-muted-foreground">{userSong.artist}</div>
+                    {userSong.genres && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {userSong.genres.split(',').map((genre: string) => (
+                          <span key={genre.trim()} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
+                            {genre.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {(() => {
+                      const userSongLink = userSong.songLink || userSong.spotifyUrl
+                      const userHasSocials = userSong.youtubeUrl || userSong.soundcloudUrl || userSong.instagramUrl || userSong.tiktokUrl || userSong.facebookUrl
+                      if (!userSongLink && !userHasSocials) return null
+                      return (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          {userSongLink && (
+                            <a 
+                              href={userSongLink} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium hover:from-purple-600 hover:to-pink-600 transition-colors"
+                              title="Listen to song"
+                            >
+                              <Link className="w-3 h-3" />
+                              Listen
+                            </a>
+                          )}
+                          {userSong.youtubeUrl && (
+                            <a href={userSong.youtubeUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-red-500 flex items-center justify-center hover:bg-red-600 transition-colors" title="YouTube">
+                              <span className="text-white text-[8px] font-bold">YT</span>
+                            </a>
+                          )}
+                          {userSong.soundcloudUrl && (
+                            <a href={userSong.soundcloudUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-orange-500 flex items-center justify-center hover:bg-orange-600 transition-colors" title="SoundCloud">
+                              <span className="text-white text-[10px] font-bold">☁</span>
+                            </a>
+                          )}
+                          {userSong.instagramUrl && (
+                            <a href={userSong.instagramUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center hover:opacity-80 transition-opacity" title="Instagram">
+                              <span className="text-white text-[8px] font-bold">IG</span>
+                            </a>
+                          )}
+                          {userSong.tiktokUrl && (
+                            <a href={userSong.tiktokUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-black flex items-center justify-center hover:bg-gray-800 transition-colors" title="TikTok">
+                              <span className="text-white text-[8px] font-bold">TT</span>
+                            </a>
+                          )}
+                          {userSong.facebookUrl && (
+                            <a href={userSong.facebookUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-blue-600 flex items-center justify-center hover:bg-blue-700 transition-colors" title="Facebook">
+                              <span className="text-white text-[8px] font-bold">FB</span>
+                            </a>
+                          )}
+                        </div>
+                      )
+                    })()}
+                    {userSong.notes && (
+                      <div className="text-xs text-muted-foreground mt-1 italic">
+                        "{userSong.notes}"
+                      </div>
+                    )}
+                    <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      {userSong.points} points
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                      onClick={() => startEditing(userSong)}
+                    >
+                      <Pencil className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                      onClick={() => {
+                        if (confirm(`Remove "${userSong.title}" from the queue?`)) {
+                          deleteMutation.mutate(userSong.id)
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -370,67 +650,107 @@ function App() {
                   <p className="text-xs text-muted-foreground">Separate multiple genres with commas</p>
                 </div>
                 
-                {/* Social Media Links */}
-                <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
-                  <div className="text-sm font-medium">Social Media Links</div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded bg-red-500 flex items-center justify-center flex-shrink-0">
-                        <Youtube className="w-4 h-4 text-white" />
-                      </div>
-                      <Input
-                        placeholder="YouTube link"
-                        value={youtubeUrl}
-                        onChange={(e) => setYoutubeUrl(e.target.value)}
-                        className="flex-1"
-                      />
+                {/* Song Link */}
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Song Link</div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                      <Link className="w-4 h-4 text-white" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded bg-green-500 flex items-center justify-center flex-shrink-0">
-                        <span className="text-white text-lg font-bold">●</span>
-                      </div>
-                      <Input
-                        placeholder="Spotify link"
-                        value={spotifyUrl}
-                        onChange={(e) => setSpotifyUrl(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded bg-orange-500 flex items-center justify-center flex-shrink-0">
-                        <span className="text-white text-lg font-bold">☁</span>
-                      </div>
-                      <Input
-                        placeholder="SoundCloud link"
-                        value={soundcloudUrl}
-                        onChange={(e) => setSoundcloudUrl(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0">
-                        <span className="text-white text-sm font-bold">IG</span>
-                      </div>
-                      <Input
-                        placeholder="Instagram link"
-                        value={instagramUrl}
-                        onChange={(e) => setInstagramUrl(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded bg-black flex items-center justify-center flex-shrink-0">
-                        <span className="text-white text-sm font-bold">TT</span>
-                      </div>
-                      <Input
-                        placeholder="TikTok link"
-                        value={tiktokUrl}
-                        onChange={(e) => setTiktokUrl(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
+                    <Input
+                      placeholder="Link to your song (YouTube, Spotify, SoundCloud, etc.)"
+                      value={songLink}
+                      onChange={(e) => setSongLink(e.target.value)}
+                      className="flex-1"
+                    />
                   </div>
-                  <p className="text-xs text-muted-foreground">Add links to where people can listen or follow</p>
+                  <p className="text-xs text-muted-foreground">No Apple Music or other paid streaming services</p>
+                </div>
+                
+                {/* Social Links - Collapsible (for following the artist) */}
+                <div className="border rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setSocialLinksOpen(!socialLinksOpen)}
+                    className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Artist Socials</span>
+                      <span className="text-xs text-muted-foreground">(optional)</span>
+                      {(youtubeUrl || soundcloudUrl || instagramUrl || tiktokUrl || facebookUrl) && (
+                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                          {[youtubeUrl, soundcloudUrl, instagramUrl, tiktokUrl, facebookUrl].filter(Boolean).length} added
+                        </span>
+                      )}
+                    </div>
+                    {socialLinksOpen ? (
+                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  {socialLinksOpen && (
+                    <div className="p-3 space-y-3 border-t">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded bg-red-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-sm font-bold">YT</span>
+                          </div>
+                          <Input
+                            placeholder="YouTube channel"
+                            value={youtubeUrl}
+                            onChange={(e) => setYoutubeUrl(e.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded bg-orange-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-lg font-bold">☁</span>
+                          </div>
+                          <Input
+                            placeholder="SoundCloud profile"
+                            value={soundcloudUrl}
+                            onChange={(e) => setSoundcloudUrl(e.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-sm font-bold">IG</span>
+                          </div>
+                          <Input
+                            placeholder="Instagram profile"
+                            value={instagramUrl}
+                            onChange={(e) => setInstagramUrl(e.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded bg-black flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-sm font-bold">TT</span>
+                          </div>
+                          <Input
+                            placeholder="TikTok profile"
+                            value={tiktokUrl}
+                            onChange={(e) => setTiktokUrl(e.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-sm font-bold">FB</span>
+                          </div>
+                          <Input
+                            placeholder="Facebook page"
+                            value={facebookUrl}
+                            onChange={(e) => setFacebookUrl(e.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Help others follow the artist on social media</p>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -547,7 +867,8 @@ function App() {
                   const rankColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
                   const idsToCheck = [clientId, user?.id].filter(Boolean)
                   const isOwnSong = song.submitterId && idsToCheck.includes(song.submitterId)
-                  const hasSocialLinks = song.youtubeUrl || song.spotifyUrl || song.soundcloudUrl || song.instagramUrl || song.tiktokUrl
+                  const songLinkUrl = song.songLink || song.spotifyUrl
+                  const hasSocialLinks = song.youtubeUrl || song.soundcloudUrl || song.instagramUrl || song.tiktokUrl || song.facebookUrl
                   
                   // Calculate percentage chance
                   // Banana songs appear in BOTH sections (banana section + points section)
@@ -567,6 +888,128 @@ function App() {
                     const poolChance = hasBanana ? 0.5 : 1
                     const chanceInPoints = allPointsTotal > 0 ? songPoints / allPointsTotal : 0
                     percentChance = chanceInPoints * poolChance * 100
+                  }
+                  
+                  // Check if this song is being edited
+                  const isEditing = editingSongId === song.id
+                  
+                  if (isEditing) {
+                    return (
+                      <div
+                        key={song.id}
+                        className="p-4 border rounded-lg border-blue-500 bg-blue-50"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-blue-700">Editing Song</span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={cancelEditing}
+                              className="h-7 w-7 p-0"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <Input
+                              placeholder="Song title *"
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                            />
+                            <Input
+                              placeholder="Artist name *"
+                              value={editArtist}
+                              onChange={(e) => setEditArtist(e.target.value)}
+                            />
+                          </div>
+                          <Input
+                            placeholder="Genres (comma-separated)"
+                            value={editGenres}
+                            onChange={(e) => setEditGenres(e.target.value)}
+                          />
+                          {/* Song Link */}
+                          <Input
+                            placeholder="Song link (YouTube, Spotify, SoundCloud, etc.)"
+                            value={editSongLink}
+                            onChange={(e) => setEditSongLink(e.target.value)}
+                          />
+                          {/* Social Links - Collapsible */}
+                          <div className="border rounded-lg overflow-hidden bg-white">
+                            <button
+                              type="button"
+                              onClick={() => setEditSocialLinksOpen(!editSocialLinksOpen)}
+                              className="w-full flex items-center justify-between p-2 bg-muted/30 hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">Artist Socials</span>
+                                {(editInstagramUrl || editTiktokUrl) && (
+                                  <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                                    {[editInstagramUrl, editTiktokUrl].filter(Boolean).length}
+                                  </span>
+                                )}
+                              </div>
+                              {editSocialLinksOpen ? (
+                                <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                              )}
+                            </button>
+                            {editSocialLinksOpen && (
+                              <div className="p-2 space-y-2 border-t">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0">
+                                      <span className="text-white text-[8px] font-bold">IG</span>
+                                    </div>
+                                    <Input
+                                      placeholder="Instagram"
+                                      value={editInstagramUrl}
+                                      onChange={(e) => setEditInstagramUrl(e.target.value)}
+                                      className="flex-1 h-8 text-sm"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded bg-black flex items-center justify-center flex-shrink-0">
+                                      <span className="text-white text-[8px] font-bold">TT</span>
+                                    </div>
+                                    <Input
+                                      placeholder="TikTok"
+                                      value={editTiktokUrl}
+                                      onChange={(e) => setEditTiktokUrl(e.target.value)}
+                                      className="flex-1 h-8 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <Textarea
+                            placeholder="Notes"
+                            value={editNotes}
+                            onChange={(e) => setEditNotes(e.target.value)}
+                            rows={2}
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleEditSubmit(song.id)}
+                              disabled={updateMutation.isPending || !editTitle.trim() || !editArtist.trim()}
+                            >
+                              {updateMutation.isPending ? 'Saving...' : 'Save'}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={cancelEditing}>
+                              Cancel
+                            </Button>
+                          </div>
+                          {updateMutation.isError && (
+                            <p className="text-sm text-red-500">
+                              {updateMutation.error instanceof Error ? updateMutation.error.message : 'Failed to update'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )
                   }
                   
                   return (
@@ -613,21 +1056,28 @@ function App() {
                           ))}
                         </div>
                       )}
-                      {hasSocialLinks && (
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {song.youtubeUrl && (
-                            <a href={song.youtubeUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-red-500 flex items-center justify-center hover:bg-red-600 transition-colors" title="YouTube">
-                              <Youtube className="w-3 h-3 text-white" />
+                      {(songLinkUrl || hasSocialLinks) && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          {songLinkUrl && (
+                            <a 
+                              href={songLinkUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium hover:from-purple-600 hover:to-pink-600 transition-colors"
+                              title="Listen to song"
+                            >
+                              <Link className="w-3 h-3" />
+                              Listen
                             </a>
                           )}
-                          {song.spotifyUrl && (
-                            <a href={song.spotifyUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-green-500 flex items-center justify-center hover:bg-green-600 transition-colors" title="Spotify">
-                              <span className="text-white text-xs font-bold">●</span>
+                          {song.youtubeUrl && (
+                            <a href={song.youtubeUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-red-500 flex items-center justify-center hover:bg-red-600 transition-colors" title="YouTube">
+                              <span className="text-white text-[8px] font-bold">YT</span>
                             </a>
                           )}
                           {song.soundcloudUrl && (
                             <a href={song.soundcloudUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-orange-500 flex items-center justify-center hover:bg-orange-600 transition-colors" title="SoundCloud">
-                              <span className="text-white text-xs font-bold">☁</span>
+                              <span className="text-white text-[10px] font-bold">☁</span>
                             </a>
                           )}
                           {song.instagramUrl && (
@@ -638,6 +1088,11 @@ function App() {
                           {song.tiktokUrl && (
                             <a href={song.tiktokUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-black flex items-center justify-center hover:bg-gray-800 transition-colors" title="TikTok">
                               <span className="text-white text-[8px] font-bold">TT</span>
+                            </a>
+                          )}
+                          {song.facebookUrl && (
+                            <a href={song.facebookUrl} target="_blank" rel="noopener noreferrer" className="w-5 h-5 rounded bg-blue-600 flex items-center justify-center hover:bg-blue-700 transition-colors" title="Facebook">
+                              <span className="text-white text-[8px] font-bold">FB</span>
                             </a>
                           )}
                         </div>
@@ -777,6 +1232,15 @@ function App() {
                                 +
                               </Button>
                             </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                              onClick={() => startEditing(song)}
+                              title="Edit song"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="ghost"

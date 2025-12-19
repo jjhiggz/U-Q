@@ -29,6 +29,20 @@
       "when": 1766183833916,
       "tag": "0003_lush_silvermane",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1766184606390,
+      "tag": "0004_flaky_shatterstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1766184860806,
+      "tag": "0005_slimy_dazzler",
+      "breakpoints": true
     }
   ]
 }

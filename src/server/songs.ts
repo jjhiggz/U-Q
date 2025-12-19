@@ -3,24 +3,6 @@ import { db } from '@/db'
 import { songs } from '@/db/schema'
 import { eq, desc, sql, inArray, isNull, isNotNull } from 'drizzle-orm'
 
-// Validate URL for a specific platform
-const validateUrl = (url: string, platform: 'youtube' | 'spotify' | 'soundcloud' | 'instagram' | 'tiktok'): boolean => {
-  const lower = url.toLowerCase()
-  switch (platform) {
-    case 'youtube':
-      return lower.includes('youtube.com') || lower.includes('youtu.be')
-    case 'spotify':
-      return lower.includes('spotify.com')
-    case 'soundcloud':
-      return lower.includes('soundcloud.com')
-    case 'instagram':
-      return lower.includes('instagram.com') || lower.includes('instagr.am')
-    case 'tiktok':
-      return lower.includes('tiktok.com') || lower.includes('vm.tiktok.com')
-    default:
-      return false
-  }
-}
 
 export const getSongs = createServerFn().handler(async () => {
   return await db.select().from(songs)
@@ -53,17 +35,63 @@ export const checkCanSubmit = createServerFn({ method: 'POST' })
     }
   })
 
+// Validate that a URL is valid and not from a paid streaming service
+const isValidSongLink = (url: string): { valid: boolean; error?: string } => {
+  try {
+    const parsed = new URL(url)
+    const lower = parsed.hostname.toLowerCase()
+    
+    // Block paid streaming services
+    if (lower.includes('music.apple.com') || lower.includes('itunes.apple.com')) {
+      return { valid: false, error: 'Apple Music links are not allowed - please use a free streaming service' }
+    }
+    if (lower.includes('tidal.com')) {
+      return { valid: false, error: 'Tidal links are not allowed - please use a free streaming service' }
+    }
+    if (lower.includes('deezer.com')) {
+      return { valid: false, error: 'Deezer links are not allowed - please use a free streaming service' }
+    }
+    if (lower.includes('amazon.com') || lower.includes('music.amazon')) {
+      return { valid: false, error: 'Amazon Music links are not allowed - please use a free streaming service' }
+    }
+    
+    return { valid: true }
+  } catch {
+    return { valid: false, error: 'Please enter a valid URL' }
+  }
+}
+
+// Validate social media URLs
+const validateSocialUrl = (url: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'soundcloud' | 'facebook'): boolean => {
+  const lower = url.toLowerCase()
+  switch (platform) {
+    case 'instagram':
+      return lower.includes('instagram.com') || lower.includes('instagr.am')
+    case 'tiktok':
+      return lower.includes('tiktok.com') || lower.includes('vm.tiktok.com')
+    case 'youtube':
+      return lower.includes('youtube.com') || lower.includes('youtu.be')
+    case 'soundcloud':
+      return lower.includes('soundcloud.com')
+    case 'facebook':
+      return lower.includes('facebook.com') || lower.includes('fb.com') || lower.includes('fb.watch')
+    default:
+      return false
+  }
+}
+
 export const submitSong = createServerFn({ method: 'POST' })
   .inputValidator((data: { 
     title: string
     artist: string
     notes?: string
     genres?: string
+    songLink?: string
     youtubeUrl?: string
-    spotifyUrl?: string
     soundcloudUrl?: string
     instagramUrl?: string
     tiktokUrl?: string
+    facebookUrl?: string
     submitterId: string
     allSubmitterIds?: string[] 
   }) => data)
@@ -84,21 +112,29 @@ export const submitSong = createServerFn({ method: 'POST' })
       }
     }
     
+    // Validate song link if provided
+    if (data.songLink) {
+      const validation = isValidSongLink(data.songLink)
+      if (!validation.valid) {
+        throw new Error(validation.error)
+      }
+    }
+    
     // Validate social media URLs if provided
-    if (data.youtubeUrl && !validateUrl(data.youtubeUrl, 'youtube')) {
+    if (data.youtubeUrl && !validateSocialUrl(data.youtubeUrl, 'youtube')) {
       throw new Error('Invalid YouTube URL')
     }
-    if (data.spotifyUrl && !validateUrl(data.spotifyUrl, 'spotify')) {
-      throw new Error('Invalid Spotify URL')
-    }
-    if (data.soundcloudUrl && !validateUrl(data.soundcloudUrl, 'soundcloud')) {
+    if (data.soundcloudUrl && !validateSocialUrl(data.soundcloudUrl, 'soundcloud')) {
       throw new Error('Invalid SoundCloud URL')
     }
-    if (data.instagramUrl && !validateUrl(data.instagramUrl, 'instagram')) {
+    if (data.instagramUrl && !validateSocialUrl(data.instagramUrl, 'instagram')) {
       throw new Error('Invalid Instagram URL')
     }
-    if (data.tiktokUrl && !validateUrl(data.tiktokUrl, 'tiktok')) {
+    if (data.tiktokUrl && !validateSocialUrl(data.tiktokUrl, 'tiktok')) {
       throw new Error('Invalid TikTok URL')
+    }
+    if (data.facebookUrl && !validateSocialUrl(data.facebookUrl, 'facebook')) {
+      throw new Error('Invalid Facebook URL')
     }
     
     const [song] = await db
@@ -108,11 +144,12 @@ export const submitSong = createServerFn({ method: 'POST' })
         artist: data.artist,
         notes: data.notes || null,
         genres: data.genres || null,
+        songLink: data.songLink || null,
         youtubeUrl: data.youtubeUrl || null,
-        spotifyUrl: data.spotifyUrl || null,
         soundcloudUrl: data.soundcloudUrl || null,
         instagramUrl: data.instagramUrl || null,
         tiktokUrl: data.tiktokUrl || null,
+        facebookUrl: data.facebookUrl || null,
         status: 'pending',
         points: 1,
         submitterId: data.submitterId || null,
@@ -170,5 +207,83 @@ export const updateBananaStickers = createServerFn({ method: 'POST' })
       .set({ bananaStickers: sql`GREATEST(${songs.bananaStickers} + ${data.delta}, 0)` })
       .where(eq(songs.id, data.id))
     return { success: true }
+  })
+
+export const updateSong = createServerFn({ method: 'POST' })
+  .inputValidator((data: { 
+    id: number
+    title: string
+    artist: string
+    notes?: string
+    genres?: string
+    songLink?: string
+    youtubeUrl?: string
+    soundcloudUrl?: string
+    instagramUrl?: string
+    tiktokUrl?: string
+    facebookUrl?: string
+    submitterId: string
+    isAdmin?: boolean
+  }) => data)
+  .handler(async ({ data }) => {
+    // Fetch the song to verify ownership
+    const [existingSong] = await db
+      .select()
+      .from(songs)
+      .where(eq(songs.id, data.id))
+      .limit(1)
+    
+    if (!existingSong) {
+      throw new Error('Song not found')
+    }
+    
+    // Only allow edit if admin or owner
+    if (!data.isAdmin && existingSong.submitterId !== data.submitterId) {
+      throw new Error('You can only edit your own songs')
+    }
+    
+    // Validate song link if provided
+    if (data.songLink) {
+      const validation = isValidSongLink(data.songLink)
+      if (!validation.valid) {
+        throw new Error(validation.error)
+      }
+    }
+    
+    // Validate social media URLs if provided
+    if (data.youtubeUrl && !validateSocialUrl(data.youtubeUrl, 'youtube')) {
+      throw new Error('Invalid YouTube URL')
+    }
+    if (data.soundcloudUrl && !validateSocialUrl(data.soundcloudUrl, 'soundcloud')) {
+      throw new Error('Invalid SoundCloud URL')
+    }
+    if (data.instagramUrl && !validateSocialUrl(data.instagramUrl, 'instagram')) {
+      throw new Error('Invalid Instagram URL')
+    }
+    if (data.tiktokUrl && !validateSocialUrl(data.tiktokUrl, 'tiktok')) {
+      throw new Error('Invalid TikTok URL')
+    }
+    if (data.facebookUrl && !validateSocialUrl(data.facebookUrl, 'facebook')) {
+      throw new Error('Invalid Facebook URL')
+    }
+    
+    const [updated] = await db
+      .update(songs)
+      .set({
+        title: data.title,
+        artist: data.artist,
+        notes: data.notes || null,
+        genres: data.genres || null,
+        songLink: data.songLink || null,
+        youtubeUrl: data.youtubeUrl || null,
+        soundcloudUrl: data.soundcloudUrl || null,
+        instagramUrl: data.instagramUrl || null,
+        tiktokUrl: data.tiktokUrl || null,
+        facebookUrl: data.facebookUrl || null,
+      })
+      .where(eq(songs.id, data.id))
+      .returning()
+    
+    return updated
   })
 
