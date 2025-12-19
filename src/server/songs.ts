@@ -3,6 +3,15 @@ import { db } from '@/db'
 import { songs } from '@/db/schema'
 import { eq, desc, sql, inArray } from 'drizzle-orm'
 
+// Detect link type from URL
+const detectLinkType = (url: string): 'youtube' | 'spotify' | 'soundcloud' | null => {
+  const lower = url.toLowerCase()
+  if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'youtube'
+  if (lower.includes('spotify.com')) return 'spotify'
+  if (lower.includes('soundcloud.com')) return 'soundcloud'
+  return null
+}
+
 export const getSongs = createServerFn().handler(async () => {
   return await db.select().from(songs).orderBy(desc(songs.bananaSticker), desc(songs.points), desc(songs.submittedAt))
 })
@@ -27,7 +36,15 @@ export const checkCanSubmit = createServerFn({ method: 'POST' })
   })
 
 export const submitSong = createServerFn({ method: 'POST' })
-  .inputValidator((data: { title: string; artist: string; submitterId: string; allSubmitterIds?: string[] }) => data)
+  .inputValidator((data: { 
+    title: string
+    artist: string
+    notes?: string
+    genres?: string
+    link?: string
+    submitterId: string
+    allSubmitterIds?: string[] 
+  }) => data)
   .handler(async ({ data }) => {
     // Check if user already has a song in queue
     // Check all possible IDs (handles login/logout transitions)
@@ -45,11 +62,24 @@ export const submitSong = createServerFn({ method: 'POST' })
       }
     }
     
+    // Validate and detect link type if provided
+    let linkType: 'youtube' | 'spotify' | 'soundcloud' | null = null
+    if (data.link) {
+      linkType = detectLinkType(data.link)
+      if (!linkType) {
+        throw new Error('Only YouTube, Spotify, and SoundCloud links are accepted')
+      }
+    }
+    
     const [song] = await db
       .insert(songs)
       .values({
         title: data.title,
         artist: data.artist,
+        notes: data.notes || null,
+        genres: data.genres || null,
+        link: data.link || null,
+        linkType,
         status: 'pending',
         points: 1,
         submitterId: data.submitterId || null,

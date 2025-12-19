@@ -5,11 +5,12 @@ import { useUser } from '@clerk/clerk-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { SpinWheelModal } from '@/components/SpinWheelModal'
 import { WheelPreviewModal } from '@/components/WheelPreviewModal'
 import { getSongs, submitSong, clearQueue, deleteSong, addPoints, toggleBananaSticker } from '@/server/songs'
 import { getClientId } from '@/lib/client-id'
-import { Music, Trash2, Sparkles, Plus, Eye, CheckCircle, Search } from 'lucide-react'
+import { Music, Trash2, Sparkles, Plus, Eye, CheckCircle, Search, Youtube, Link, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -20,11 +21,15 @@ const ADMIN_EMAILS = ['jonathan.higger@gmail.com']
 function App() {
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
+  const [notes, setNotes] = useState('')
+  const [genres, setGenres] = useState('')
+  const [link, setLink] = useState('')
   const [spinWheelOpen, setSpinWheelOpen] = useState(false)
   const [previewSong, setPreviewSong] = useState<{ id: number; title: string; artist: string; points: number; bananaSticker: boolean } | null>(null)
   const [customPointsSongId, setCustomPointsSongId] = useState<number | null>(null)
   const [customPointsValue, setCustomPointsValue] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [submitFormOpen, setSubmitFormOpen] = useState(true)
   const queryClient = useQueryClient()
   const { user } = useUser()
   
@@ -53,11 +58,14 @@ function App() {
   }, [songs, clientId, user?.id])
 
   const submitMutation = useMutation({
-    mutationFn: (data: { title: string; artist: string; submitterId: string; allSubmitterIds: string[] }) => submitSong({ data }),
+    mutationFn: (data: { title: string; artist: string; notes?: string; genres?: string; link?: string; submitterId: string; allSubmitterIds: string[] }) => submitSong({ data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['songs'] })
       setTitle('')
       setArtist('')
+      setNotes('')
+      setGenres('')
+      setLink('')
     },
   })
 
@@ -96,7 +104,15 @@ function App() {
     // Admins can always submit, regular users only if they don't have a song
     if (title.trim() && artist.trim() && (isKnownAdminUser || !userSong)) {
       const allSubmitterIds = isKnownAdminUser ? [] : [clientId, user?.id].filter((id): id is string => Boolean(id))
-      submitMutation.mutate({ title: title.trim(), artist: artist.trim(), submitterId, allSubmitterIds })
+      submitMutation.mutate({ 
+        title: title.trim(), 
+        artist: artist.trim(), 
+        notes: notes.trim() || undefined,
+        genres: genres.trim() || undefined,
+        link: link.trim() || undefined,
+        submitterId, 
+        allSubmitterIds 
+      })
     }
   }
 
@@ -171,9 +187,35 @@ function App() {
           <CardContent>
             <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="font-medium">{userSong.title}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium flex items-center gap-2">
+                    {userSong.title}
+                    {userSong.link && (
+                      <a 
+                        href={userSong.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
                   <div className="text-sm text-muted-foreground">{userSong.artist}</div>
+                  {userSong.genres && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {userSong.genres.split(',').map((genre: string) => (
+                        <span key={genre.trim()} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
+                          {genre.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {userSong.notes && (
+                    <div className="text-xs text-muted-foreground mt-1 italic">
+                      "{userSong.notes}"
+                    </div>
+                  )}
                   <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
                     {userSong.points} points
@@ -202,43 +244,94 @@ function App() {
       {/* Submit form - always show for admins, only show for non-admins without a song */}
       {(isKnownAdminUser || !userSong) && (
         <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Submit a Song</CardTitle>
-            <CardDescription>
-              {isKnownAdminUser 
-                ? 'As an admin, you can submit unlimited songs'
-                : 'Enter the song title and artist name'
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Input
-                  placeholder="Song Title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
+          <CardHeader 
+            className="cursor-pointer select-none" 
+            onClick={() => setSubmitFormOpen(!submitFormOpen)}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Submit a Song</CardTitle>
+                <CardDescription>
+                  {isKnownAdminUser 
+                    ? 'As an admin, you can submit unlimited songs'
+                    : 'Enter the song title and artist name'
+                  }
+                </CardDescription>
               </div>
-              <div className="space-y-2">
-                <Input
-                  placeholder="Artist Name"
-                  value={artist}
-                  onChange={(e) => setArtist(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" disabled={submitMutation.isPending} className="w-full">
-                {submitMutation.isPending ? 'Submitting...' : 'Submit Song'}
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                {submitFormOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
               </Button>
-              {submitMutation.isError && (
-                <p className="text-sm text-red-500 text-center">
-                  {submitMutation.error instanceof Error ? submitMutation.error.message : 'Failed to submit song'}
-                </p>
-              )}
-            </form>
-          </CardContent>
+            </div>
+          </CardHeader>
+          {submitFormOpen && (
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Song Title *</div>
+                    <Input
+                      placeholder="Enter song title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Artist Name *</div>
+                    <Input
+                      placeholder="Enter artist name"
+                      value={artist}
+                      onChange={(e) => setArtist(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Genres</div>
+                  <Input
+                    placeholder="e.g. Rock, Indie, Electronic"
+                    value={genres}
+                    onChange={(e) => setGenres(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Separate multiple genres with commas</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Link</div>
+                  <div className="relative">
+                    <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="YouTube, Spotify, or SoundCloud link"
+                      value={link}
+                      onChange={(e) => setLink(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Only YouTube, Spotify, and SoundCloud links are accepted</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Notes</div>
+                  <Textarea
+                    placeholder="Any additional notes? (e.g. 'Start at 1:30', 'Check out the bridge!')"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+                <Button type="submit" disabled={submitMutation.isPending} className="w-full">
+                  {submitMutation.isPending ? 'Submitting...' : 'Submit Song'}
+                </Button>
+                {submitMutation.isError && (
+                  <p className="text-sm text-red-500 text-center">
+                    {submitMutation.error instanceof Error ? submitMutation.error.message : 'Failed to submit song'}
+                  </p>
+                )}
+              </form>
+            </CardContent>
+          )}
         </Card>
       )}
 
@@ -267,12 +360,12 @@ function App() {
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
             <div>
-              <CardTitle>Leaderboard</CardTitle>
-              <CardDescription>
-                {songs.length === 0
-                  ? 'No songs in queue yet'
-                  : `${songs.length} song${songs.length === 1 ? '' : 's'} — ranked by points`}
-              </CardDescription>
+          <CardTitle>Leaderboard</CardTitle>
+          <CardDescription>
+            {songs.length === 0
+              ? 'No songs in queue yet'
+              : `${songs.length} song${songs.length === 1 ? '' : 's'} — ranked by points`}
+          </CardDescription>
             </div>
             {songs.length > 0 && (
               <div className="relative w-64">
@@ -308,8 +401,10 @@ function App() {
                 // Filter songs based on search query
                 const query = searchQuery.toLowerCase().trim()
                 const filteredSongs = query
-                  ? songs.filter((s: { title: string; artist: string }) => 
-                      s.title.toLowerCase().includes(query) || s.artist.toLowerCase().includes(query)
+                  ? songs.filter((s: { title: string; artist: string; genres?: string | null }) => 
+                      s.title.toLowerCase().includes(query) || 
+                      s.artist.toLowerCase().includes(query) ||
+                      (s.genres?.toLowerCase().includes(query) ?? false)
                     )
                   : songs
                 
@@ -321,7 +416,7 @@ function App() {
                   )
                 }
                 
-                return filteredSongs.map((song: { id: number; title: string; artist: string; submittedAt: Date | string; points: number; bananaSticker: boolean; submitterId: string | null }) => {
+                return filteredSongs.map((song: { id: number; title: string; artist: string; notes?: string | null; genres?: string | null; link?: string | null; linkType?: string | null; submittedAt: Date | string; points: number; bananaSticker: boolean; submitterId: string | null }) => {
                   // Use original index for rank (not filtered index)
                   const originalIndex = songs.findIndex((s: { id: number }) => s.id === song.id)
                   const rank = originalIndex + 1
@@ -374,10 +469,41 @@ function App() {
                         {song.bananaSticker && <img src="/banana sticker.png" alt="🍌" className="w-5 h-5" title="Banana Sticker - 50% priority pool" />}
                         {song.title}
                         {isOwnSong && <span className="text-xs bg-green-500 text-white px-1.5 py-0.5 rounded">You</span>}
+                        {song.link && (
+                          <a 
+                            href={song.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            title={`Open on ${song.linkType === 'youtube' ? 'YouTube' : song.linkType === 'spotify' ? 'Spotify' : 'SoundCloud'}`}
+                          >
+                            {song.linkType === 'youtube' ? (
+                              <Youtube className="w-4 h-4 text-red-500" />
+                            ) : song.linkType === 'spotify' ? (
+                              <span className="text-green-500 text-sm font-bold">●</span>
+                            ) : (
+                              <span className="text-orange-500 text-sm font-bold">☁</span>
+                            )}
+                          </a>
+                        )}
                       </div>
                       <div className="text-sm text-muted-foreground truncate">
                         {song.artist}
                       </div>
+                      {song.genres && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {song.genres.split(',').map((genre) => (
+                            <span key={genre.trim()} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
+                              {genre.trim()}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {song.notes && (
+                        <div className="text-xs text-muted-foreground mt-1 italic truncate">
+                          "{song.notes}"
+                        </div>
+                      )}
                     </div>
                     
                     {/* Admin controls */}
@@ -423,30 +549,30 @@ function App() {
                           <>
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
-                                  onClick={() => addPointsMutation.mutate({ id: song.id, points: 1 })}
-                                >
-                                  +1
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
-                                  onClick={() => addPointsMutation.mutate({ id: song.id, points: 5 })}
-                                >
-                                  +5
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
-                                  onClick={() => addPointsMutation.mutate({ id: song.id, points: 10 })}
-                                >
-                                  +10
-                                </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
+                              onClick={() => addPointsMutation.mutate({ id: song.id, points: 1 })}
+                            >
+                              +1
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
+                              onClick={() => addPointsMutation.mutate({ id: song.id, points: 5 })}
+                            >
+                              +5
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-100"
+                              onClick={() => addPointsMutation.mutate({ id: song.id, points: 10 })}
+                            >
+                              +10
+                            </Button>
                               </div>
                               <div className="flex items-center gap-1">
                                 <Button
