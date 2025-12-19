@@ -105,9 +105,42 @@ export function SpinWheel({ songs, isSpinning, onSpinComplete }: SpinWheelProps)
       }
       
       // Calculate rotation to land on this segment
-      const angleToTop = -90 - winningSeg.midAngle
-      const extraSpins = (5 + Math.random() * 3) * 360
-      const finalRotation = rotation + extraSpins + angleToTop
+      // The pointer is at the top (-90 degrees / 270 degrees)
+      // For segment at midAngle θ to be under pointer after rotation R:
+      // θ + R ≡ 270 (mod 360)
+      // R ≡ 270 - θ (mod 360)
+      
+      // Calculate the base rotation that aligns this segment with the pointer
+      const baseRotation = 270 - winningSeg.midAngle
+      
+      // Normalize to 0-360
+      const baseNormalized = ((baseRotation % 360) + 360) % 360
+      
+      // Current wheel position (normalized)
+      const currentNormalized = ((rotation % 360) + 360) % 360
+      
+      // How much more do we need to rotate to reach the target?
+      let deltaToTarget = baseNormalized - currentNormalized
+      if (deltaToTarget <= 0) deltaToTarget += 360
+      
+      // Add full spins for visual effect (must be exact multiple of 360!)
+      const numExtraSpins = Math.floor(5 + Math.random() * 4) // 5-8 full spins
+      const extraSpins = numExtraSpins * 360
+      
+      const finalRotation = rotation + deltaToTarget + extraSpins
+      
+      // Debug log
+      console.log('Spin debug:', {
+        winner: winner.title,
+        midAngle: winningSeg.midAngle,
+        baseRotation,
+        currentNormalized,
+        deltaToTarget,
+        extraSpins,
+        finalRotation,
+        finalMod360: finalRotation % 360,
+        expectedPosition: (winningSeg.midAngle + finalRotation) % 360
+      })
       
       setRotation(finalRotation)
       setHasSpun(true)
@@ -154,20 +187,44 @@ export function SpinWheel({ songs, isSpinning, onSpinComplete }: SpinWheelProps)
   }
 
   const getTextPosition = (midAngle: number, segmentAngle: number) => {
-    const textRadius = segmentAngle > 30 ? 85 : 100
     const cx = 160
     const cy = 160
     
+    // Normalize angle to 0-360
+    const normalizedAngle = ((midAngle % 360) + 360) % 360
+    
+    // Determine if text would be upside down (between 90 and 270 degrees)
+    const isBottomHalf = normalizedAngle > 90 && normalizedAngle < 270
+    
+    // For wide segments (> 30 degrees), use tangential text (along the arc)
+    // For narrow segments, use radial text (along the radius)
+    const isWideSegment = segmentAngle > 30
+    
     const rad = (midAngle * Math.PI) / 180
-    const x = cx + textRadius * Math.cos(rad)
-    const y = cy + textRadius * Math.sin(rad)
     
-    let textRotation = midAngle + 90
-    if (midAngle > 0 && midAngle < 180) {
-      textRotation += 180
+    if (isWideSegment) {
+      // Tangential text - positioned in the middle of the segment, along the arc
+      const textRadius = 90
+      const x = cx + textRadius * Math.cos(rad)
+      const y = cy + textRadius * Math.sin(rad)
+      
+      // Rotate text to be tangent to the circle (perpendicular to radius)
+      // Add 90 to make it perpendicular, flip if on bottom half
+      const textRotation = isBottomHalf ? midAngle - 90 : midAngle + 90
+      
+      return { x, y, rotation: textRotation, anchor: 'middle' as const }
+    } else {
+      // Radial text - along the radius for narrow segments
+      const textRadius = isBottomHalf ? 75 : 95
+      const x = cx + textRadius * Math.cos(rad)
+      const y = cy + textRadius * Math.sin(rad)
+      
+      // Text follows the radius - flip if on bottom half so it's always readable
+      const textRotation = isBottomHalf ? midAngle + 180 : midAngle
+      const anchor: 'start' | 'end' = isBottomHalf ? 'end' : 'start'
+      
+      return { x, y, rotation: textRotation, anchor }
     }
-    
-    return { x, y, rotation: textRotation }
   }
 
   if (songs.length === 0) {
@@ -226,15 +283,15 @@ export function SpinWheel({ songs, isSpinning, onSpinComplete }: SpinWheelProps)
                   🍌
                 </text>
               )}
-              {/* Song title */}
+              {/* Song title - follows radius for easy debugging */}
               {showText && (
                 <text
                   x={textPos.x}
                   y={textPos.y}
                   fill="#1f2937"
-                  fontSize={seg.angle > 25 ? 11 : 9}
+                  fontSize={seg.angle > 25 ? 10 : 8}
                   fontWeight="600"
-                  textAnchor="middle"
+                  textAnchor={textPos.anchor}
                   dominantBaseline="middle"
                   transform={`rotate(${textPos.rotation}, ${textPos.x}, ${textPos.y})`}
                   className="pointer-events-none select-none"
