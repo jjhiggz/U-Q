@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, timestamp, integer, boolean, text } from 'drizzle-orm/pg-core'
+import { pgTable, serial, varchar, timestamp, integer, text } from 'drizzle-orm/pg-core'
 
 export const songs = pgTable('songs', {
   id: serial('id').primaryKey(),
@@ -15,7 +15,7 @@ export const songs = pgTable('songs', {
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   status: varchar('status', { length: 50 }).default('pending').notNull(),
   points: integer('points').default(1).notNull(),
-  bananaSticker: boolean('banana_sticker').default(false).notNull(),
+  bananaStickers: integer('banana_stickers').default(0).notNull(), // count of banana stickers
   submitterId: varchar('submitter_id', { length: 255 }),
   archivedAt: timestamp('archived_at'), // null = in queue, set = archived/pinned
 })

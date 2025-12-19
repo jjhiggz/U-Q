@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SpinWheelModal } from '@/components/SpinWheelModal'
 import { WheelPreviewModal } from '@/components/WheelPreviewModal'
 import { PinnedSongSection } from '@/components/PinnedSongSection'
-import { getSongs, getArchivedSongs, submitSong, clearQueue, deleteSong, archiveSong, addPoints, toggleBananaSticker } from '@/server/songs'
+import { getSongs, getArchivedSongs, submitSong, clearQueue, deleteSong, archiveSong, addPoints, updateBananaStickers } from '@/server/songs'
 import { getClientId } from '@/lib/client-id'
 import { Music, Trash2, Sparkles, Plus, Eye, CheckCircle, Search, Youtube, ChevronDown, ChevronUp } from 'lucide-react'
 
@@ -30,7 +30,7 @@ function App() {
   const [instagramUrl, setInstagramUrl] = useState('')
   const [tiktokUrl, setTiktokUrl] = useState('')
   const [spinWheelOpen, setSpinWheelOpen] = useState(false)
-  const [previewSong, setPreviewSong] = useState<{ id: number; title: string; artist: string; points: number; bananaSticker: boolean } | null>(null)
+  const [previewSong, setPreviewSong] = useState<{ id: number; title: string; artist: string; points: number; bananaStickers: number } | null>(null)
   const [customPointsSongId, setCustomPointsSongId] = useState<number | null>(null)
   const [customPointsValue, setCustomPointsValue] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -137,7 +137,7 @@ function App() {
   })
 
   const bananaMutation = useMutation({
-    mutationFn: (data: { id: number; value: boolean }) => toggleBananaSticker({ data }),
+    mutationFn: (data: { id: number; delta: number }) => updateBananaStickers({ data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['songs'] })
     },
@@ -516,8 +516,8 @@ function App() {
             <div className="space-y-2">
               {(() => {
                 // Pre-calculate totals for percentage calculations
-                const bananaSongs = songs.filter((s: { bananaSticker: boolean }) => s.bananaSticker)
-                const bananaPointsTotal = bananaSongs.reduce((sum: number, s: { points: number }) => sum + (s.points || 1), 0)
+                const bananaSongs = songs.filter((s: { bananaStickers: number }) => s.bananaStickers > 0)
+                const totalBananaCount = bananaSongs.reduce((sum: number, s: { bananaStickers: number }) => sum + s.bananaStickers, 0)
                 const allPointsTotal = songs.reduce((sum: number, s: { points: number }) => sum + (s.points || 1), 0)
                 const hasBanana = bananaSongs.length > 0
                 
@@ -539,7 +539,7 @@ function App() {
                   )
                 }
                 
-                return filteredSongs.map((song: { id: number; title: string; artist: string; notes?: string | null; genres?: string | null; youtubeUrl?: string | null; spotifyUrl?: string | null; soundcloudUrl?: string | null; instagramUrl?: string | null; tiktokUrl?: string | null; submittedAt: Date | string; points: number; bananaSticker: boolean; submitterId: string | null }) => {
+                return filteredSongs.map((song: { id: number; title: string; artist: string; notes?: string | null; genres?: string | null; youtubeUrl?: string | null; spotifyUrl?: string | null; soundcloudUrl?: string | null; instagramUrl?: string | null; tiktokUrl?: string | null; submittedAt: Date | string; points: number; bananaStickers: number; submitterId: string | null }) => {
                   // Use original index for rank (not filtered index)
                   const originalIndex = songs.findIndex((s: { id: number }) => s.id === song.id)
                   const rank = originalIndex + 1
@@ -550,23 +550,23 @@ function App() {
                   const hasSocialLinks = song.youtubeUrl || song.spotifyUrl || song.soundcloudUrl || song.instagramUrl || song.tiktokUrl
                   
                   // Calculate percentage chance
-                  // Banana songs appear in BOTH sections (banana section + regular section)
-                  // Regular songs only appear in regular section
+                  // Banana songs appear in BOTH sections (banana section + points section)
+                  // Non-banana songs only appear in points section
                   const songPoints = song.points || 1
                   let percentChance = 0
                   
-                  if (song.bananaSticker && hasBanana) {
+                  if (song.bananaStickers > 0 && hasBanana) {
                     // Banana songs get two chances:
-                    // 1. Banana section (50%): songPoints / bananaPointsTotal
-                    // 2. Regular section (50%): songPoints / allPointsTotal
-                    const chanceInBanana = bananaPointsTotal > 0 ? (songPoints / bananaPointsTotal) * 0.5 : 0
-                    const chanceInRegular = allPointsTotal > 0 ? (songPoints / allPointsTotal) * 0.5 : 0
-                    percentChance = (chanceInBanana + chanceInRegular) * 100
+                    // 1. Banana section (50%): song.bananaStickers / totalBananaCount
+                    // 2. Points section (50%): songPoints / allPointsTotal
+                    const chanceInBanana = totalBananaCount > 0 ? (song.bananaStickers / totalBananaCount) * 0.5 : 0
+                    const chanceInPoints = allPointsTotal > 0 ? (songPoints / allPointsTotal) * 0.5 : 0
+                    percentChance = (chanceInBanana + chanceInPoints) * 100
                   } else {
-                    // Non-banana songs only in regular section
+                    // Non-banana songs only in points section
                     const poolChance = hasBanana ? 0.5 : 1
-                    const chanceInRegular = allPointsTotal > 0 ? songPoints / allPointsTotal : 0
-                    percentChance = chanceInRegular * poolChance * 100
+                    const chanceInPoints = allPointsTotal > 0 ? songPoints / allPointsTotal : 0
+                    percentChance = chanceInPoints * poolChance * 100
                   }
                   
                   return (
@@ -575,7 +575,7 @@ function App() {
                     className={`flex items-center gap-4 p-4 border rounded-lg hover:bg-accent transition-colors ${
                       isOwnSong 
                         ? 'border-green-500 bg-green-500/10 ring-1 ring-green-500/30' 
-                        : song.bananaSticker 
+                        : song.bananaStickers > 0 
                           ? 'border-yellow-400 bg-yellow-50' 
                           : isTop3 
                             ? 'border-purple-500/30 bg-purple-500/5' 
@@ -590,7 +590,14 @@ function App() {
                     {/* Song info */}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate flex items-center gap-2">
-                        {song.bananaSticker && <img src="/banana sticker.png" alt="🍌" className="w-5 h-5" title="Banana Sticker - 50% priority pool" />}
+                        {song.bananaStickers > 0 && (
+                          <span className="flex items-center gap-0.5" title={`${song.bananaStickers} banana sticker${song.bananaStickers > 1 ? 's' : ''} - 50% priority pool`}>
+                            {Array.from({ length: Math.min(song.bananaStickers, 3) }).map((_, i) => (
+                              <img key={i} src="/banana sticker.png" alt="🍌" className="w-5 h-5" />
+                            ))}
+                            {song.bananaStickers > 3 && <span className="text-xs text-muted-foreground">+{song.bananaStickers - 3}</span>}
+                          </span>
+                        )}
                         {song.title}
                         {isOwnSong && <span className="text-xs bg-green-500 text-white px-1.5 py-0.5 rounded">You</span>}
                       </div>
@@ -745,15 +752,31 @@ function App() {
                             >
                               <Plus className="w-3 h-3" />
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className={`h-7 px-2 text-xs ${song.bananaSticker ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
-                              onClick={() => bananaMutation.mutate({ id: song.id, value: !song.bananaSticker })}
-                              title={song.bananaSticker ? 'Remove banana sticker' : 'Add banana sticker (50% priority)'}
-                            >
-                              <img src="/banana sticker.png" alt="🍌" className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center gap-0.5 border rounded px-1 py-0.5 bg-amber-50">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-xs text-amber-700 hover:bg-amber-200"
+                                onClick={() => bananaMutation.mutate({ id: song.id, delta: -1 })}
+                                disabled={song.bananaStickers === 0}
+                                title="Remove banana sticker"
+                              >
+                                -
+                              </Button>
+                              <span className="flex items-center gap-0.5 min-w-[32px] justify-center">
+                                <img src="/banana sticker.png" alt="🍌" className="w-4 h-4" />
+                                <span className="text-xs font-medium text-amber-700">{song.bananaStickers}</span>
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-xs text-amber-700 hover:bg-amber-200"
+                                onClick={() => bananaMutation.mutate({ id: song.id, delta: 1 })}
+                                title="Add banana sticker (50% priority pool)"
+                              >
+                                +
+                              </Button>
+                            </div>
                             <Button
                               size="sm"
                               variant="ghost"

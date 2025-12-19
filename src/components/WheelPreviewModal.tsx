@@ -11,7 +11,7 @@ interface Song {
   title: string
   artist: string
   points: number
-  bananaSticker: boolean
+  bananaStickers: number
 }
 
 interface WheelPreviewModalProps {
@@ -33,7 +33,7 @@ export function WheelPreviewModal({
 }: WheelPreviewModalProps) {
   if (!song) return null
 
-  const bananaSongs = allSongs.filter(s => s.bananaSticker)
+  const bananaSongs = allSongs.filter(s => s.bananaStickers > 0)
   const hasBanana = bananaSongs.length > 0
   
   // Calculate degrees for each section
@@ -62,13 +62,12 @@ export function WheelPreviewModal({
   const segments: Segment[] = []
   let currentAngle = -90
 
-  // Banana section segments (only banana songs)
+  // Banana section segments (only banana songs) - weighted by banana COUNT, not points
   if (hasBanana && bananaSectionDegrees > 0) {
-    const bananaPointsTotal = bananaSongs.reduce((sum, s) => sum + (s.points || 1), 0)
+    const totalBananaCount = bananaSongs.reduce((sum, s) => sum + s.bananaStickers, 0)
     
     bananaSongs.forEach((s) => {
-      const songPoints = s.points || 1
-      const angle = (songPoints / bananaPointsTotal) * bananaSectionDegrees
+      const angle = (s.bananaStickers / totalBananaCount) * bananaSectionDegrees
       
       segments.push({
         song: s,
@@ -105,23 +104,25 @@ export function WheelPreviewModal({
   }
 
   // Calculate percentage chance
-  // If the song has banana sticker: appears in both sections
-  // Banana section (50%): chance based on points among banana songs
-  // Regular section (50%): chance based on points among all songs
+  // If the song has banana stickers: appears in BOTH sections
+  // Banana section (50%): chance based on BANANA COUNT among banana songs
+  // Points section (50%): chance based on POINTS among ALL songs
   let percentChance = 0
   
-  if (song.bananaSticker && hasBanana) {
+  if (song.bananaStickers > 0 && hasBanana) {
     // Banana songs appear in both sections
-    const bananaPointsTotal = bananaSongs.reduce((sum, s) => sum + (s.points || 1), 0)
+    const totalBananaCount = bananaSongs.reduce((sum, s) => sum + s.bananaStickers, 0)
     const allPointsTotal = allSongs.reduce((sum, s) => sum + (s.points || 1), 0)
     const songPoints = song.points || 1
     
-    const chanceInBananaSection = (songPoints / bananaPointsTotal) * 0.5 // 50% for banana section
-    const chanceInRegularSection = (songPoints / allPointsTotal) * 0.5 // 50% for regular section
+    // Banana section: weighted by banana count
+    const chanceInBananaSection = (song.bananaStickers / totalBananaCount) * 0.5
+    // Points section: weighted by points
+    const chanceInPointsSection = (songPoints / allPointsTotal) * 0.5
     
-    percentChance = (chanceInBananaSection + chanceInRegularSection) * 100
+    percentChance = (chanceInBananaSection + chanceInPointsSection) * 100
   } else {
-    // Non-banana songs only appear in regular section
+    // Non-banana songs only appear in points section
     const allPointsTotal = allSongs.reduce((sum, s) => sum + (s.points || 1), 0)
     const songPoints = song.points || 1
     
@@ -153,7 +154,14 @@ export function WheelPreviewModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {song.bananaSticker && <img src="/banana sticker.png" alt="🍌" className="w-5 h-5" />}
+            {song.bananaStickers > 0 && (
+              <span className="flex items-center gap-0.5">
+                {Array.from({ length: Math.min(song.bananaStickers, 3) }).map((_, i) => (
+                  <img key={`banana-${song.id}-${i}`} src="/banana sticker.png" alt="🍌" className="w-5 h-5" />
+                ))}
+                {song.bananaStickers > 3 && <span className="text-xs">+{song.bananaStickers - 3}</span>}
+              </span>
+            )}
             {song.title}
           </DialogTitle>
           <DialogDescription>
@@ -200,15 +208,15 @@ export function WheelPreviewModal({
               chance of being selected
             </div>
             
-            {song.bananaSticker && hasBanana && (
+            {song.bananaStickers > 0 && hasBanana && (
               <div className="mt-4 text-xs text-muted-foreground bg-muted rounded-lg p-3">
-                <span className="font-medium text-amber-600">🍌 Banana sticker bonus!</span>
+                <span className="font-medium text-amber-600">🍌 Banana sticker bonus! ({song.bananaStickers}x)</span>
                 <br />
-                Appears in both sections of the wheel
+                Appears in both sections of the wheel, banana section weighted by sticker count
               </div>
             )}
             
-            {!song.bananaSticker && hasBanana && (
+            {song.bananaStickers === 0 && hasBanana && (
               <div className="mt-4 text-xs text-muted-foreground bg-muted rounded-lg p-3">
                 <span className="font-medium text-gray-600">Regular pool (50% base)</span>
                 <br />

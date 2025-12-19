@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo } from 'react'
+import { buildWheelLayout, selectWinner, type WheelSong, type WheelSegment } from '../lib/wheel-algorithm'
 
 interface Song {
   id: number
   title: string
   artist: string
   points: number
-  bananaSticker: boolean
+  bananaStickers: number // count of banana stickers
 }
 
 interface SpinWheelProps {
@@ -44,34 +45,8 @@ const BANANA_COLORS = [
   '#FFB347', // pastel orange
 ]
 
-interface Segment {
-  song: Song
-  startAngle: number
-  endAngle: number
-  angle: number
-  midAngle: number
-  isBananaSection: boolean // true = in banana section of wheel
+interface DisplaySegment extends WheelSegment {
   color: string
-  segmentId: string // unique id for segments (song can appear twice)
-}
-
-// Seeded random shuffle to keep order consistent during a session
-const seededShuffle = <T,>(array: T[], seed: number): T[] => {
-  const shuffled = [...array]
-  let currentIndex = shuffled.length
-  
-  const random = () => {
-    seed = (seed * 9301 + 49297) % 233280
-    return seed / 233280
-  }
-  
-  while (currentIndex > 0) {
-    const randomIndex = Math.floor(random() * currentIndex)
-    currentIndex--
-    ;[shuffled[currentIndex], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[currentIndex]]
-  }
-  
-  return shuffled
 }
 
 export function SpinWheel({ songs, isSpinning, onSpinComplete }: SpinWheelProps) {
@@ -82,130 +57,54 @@ export function SpinWheel({ songs, isSpinning, onSpinComplete }: SpinWheelProps)
     return songs.reduce((acc, s) => acc + s.id, 0)
   }, [songs])
 
-  // Banana songs (for banana section)
-  const bananaSongs = useMemo(() => songs.filter(s => s.bananaSticker), [songs])
-  
-  // All songs go in the regular section (including banana songs)
-  const allSongsForRegular = useMemo(() => songs, [songs])
+  // Convert songs to WheelSong format and build layout
+  const wheelSongs: WheelSong[] = useMemo(() => 
+    songs.map(s => ({
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      points: s.points,
+      bananaStickers: s.bananaStickers,
+    })), [songs])
 
-  // Shuffled versions for wheel display
-  const { shuffledBananaSongs, shuffledRegularSongs } = useMemo(() => {
-    return {
-      shuffledBananaSongs: seededShuffle(bananaSongs, shuffleSeed),
-      shuffledRegularSongs: seededShuffle(allSongsForRegular, shuffleSeed + 1),
-    }
-  }, [bananaSongs, allSongsForRegular, shuffleSeed])
+  const layout = useMemo(() => buildWheelLayout(wheelSongs, shuffleSeed), [wheelSongs, shuffleSeed])
 
-  // Build wheel segments
-  // Banana section: only banana songs (yellow colors)
-  // Regular section: ALL songs including banana songs (varied colors)
-  const segments = useMemo(() => {
-    const hasBanana = shuffledBananaSongs.length > 0
-    const hasAny = shuffledRegularSongs.length > 0
-    
-    let bananaDegreesTotal = 0
-    let regularDegreesTotal = 0
-    
-    if (hasBanana && hasAny) {
-      bananaDegreesTotal = 180 // Banana songs get 50% in their own section
-      regularDegreesTotal = 180 // All songs (including banana) share the other 50%
-    } else if (hasAny) {
-      regularDegreesTotal = 360 // No banana songs, everyone gets full wheel
-    }
-    
-    const segs: Segment[] = []
-    let currentAngle = -90
+  // Add colors to segments for display
+  const displaySegments: DisplaySegment[] = useMemo(() => {
+    let bananaColorIndex = 0
+    let regularColorIndex = 0
 
-    // Add banana section segments (only banana songs, yellow colors)
-    if (hasBanana && bananaDegreesTotal > 0) {
-      const bananaPointsTotal = shuffledBananaSongs.reduce((sum, s) => sum + (s.points || 1), 0)
-      
-      shuffledBananaSongs.forEach((song, i) => {
-        const songPoints = song.points || 1
-        const angle = (songPoints / bananaPointsTotal) * bananaDegreesTotal
-        
-        segs.push({
-          song,
-          startAngle: currentAngle,
-          endAngle: currentAngle + angle,
-          angle,
-          midAngle: currentAngle + angle / 2,
-          isBananaSection: true,
-          color: BANANA_COLORS[i % BANANA_COLORS.length],
-          segmentId: `banana-${song.id}`,
-        })
-        
-        currentAngle += angle
-      })
-    }
-
-    // Add regular section segments (ALL songs, varied colors)
-    if (hasAny && regularDegreesTotal > 0) {
-      const regularPointsTotal = shuffledRegularSongs.reduce((sum, s) => sum + (s.points || 1), 0)
-      
-      shuffledRegularSongs.forEach((song, i) => {
-        const songPoints = song.points || 1
-        const angle = (songPoints / regularPointsTotal) * regularDegreesTotal
-        
-        segs.push({
-          song,
-          startAngle: currentAngle,
-          endAngle: currentAngle + angle,
-          angle,
-          midAngle: currentAngle + angle / 2,
-          isBananaSection: false,
-          color: REGULAR_COLORS[i % REGULAR_COLORS.length],
-          segmentId: `regular-${song.id}`,
-        })
-        
-        currentAngle += angle
-      })
-    }
-    
-    return segs
-  }, [shuffledBananaSongs, shuffledRegularSongs])
+    return layout.segments.map(seg => ({
+      ...seg,
+      color: seg.isBananaSection
+        ? BANANA_COLORS[bananaColorIndex++ % BANANA_COLORS.length]
+        : REGULAR_COLORS[regularColorIndex++ % REGULAR_COLORS.length],
+    }))
+  }, [layout.segments])
 
   // Handle spin logic
   useEffect(() => {
-    if (isSpinning && !hasSpun && segments.length > 0) {
-      const hasBanana = bananaSongs.length > 0
+    if (isSpinning && !hasSpun && displaySegments.length > 0) {
+      // Use the algorithm to select a winner
+      const result = selectWinner(wheelSongs)
       
-      // Step 1: Pick which pool (50/50 if banana songs exist)
-      let selectedPool: Song[]
-      let fromBananaSection: boolean
-      
-      if (hasBanana) {
-        fromBananaSection = Math.random() < 0.5
-        selectedPool = fromBananaSection ? bananaSongs : allSongsForRegular
-      } else {
-        fromBananaSection = false
-        selectedPool = allSongsForRegular
+      if (!result) {
+        console.error('Could not select winner')
+        return
       }
+
+      const { winner, fromBananaSection } = result
       
-      // Step 2: Within the pool, pick based on points (weighted random)
-      const poolPointsTotal = selectedPool.reduce((sum, s) => sum + (s.points || 1), 0)
-      const randomPoint = Math.random() * poolPointsTotal
-      let cumulative = 0
-      let winner = selectedPool[0]
-      
-      for (const song of selectedPool) {
-        cumulative += song.points || 1
-        if (randomPoint <= cumulative) {
-          winner = song
-          break
-        }
-      }
-      
-      // Step 3: Find the winning segment (from the correct section)
-      const segmentPrefix = fromBananaSection ? 'banana' : 'regular'
-      const winningSeg = segments.find(s => s.segmentId === `${segmentPrefix}-${winner.id}`)
+      // Find the winning segment
+      const segmentPrefix = fromBananaSection ? 'banana' : 'points'
+      const winningSeg = displaySegments.find(s => s.segmentId === `${segmentPrefix}-${winner.id}`)
       
       if (!winningSeg) {
         console.error('Could not find winning segment for song:', winner)
         return
       }
       
-      // Step 4: Calculate rotation to land on this segment
+      // Calculate rotation to land on this segment
       const angleToTop = -90 - winningSeg.midAngle
       const extraSpins = (5 + Math.random() * 3) * 360
       const finalRotation = rotation + extraSpins + angleToTop
@@ -213,11 +112,15 @@ export function SpinWheel({ songs, isSpinning, onSpinComplete }: SpinWheelProps)
       setRotation(finalRotation)
       setHasSpun(true)
 
-      setTimeout(() => {
-        onSpinComplete(winner)
-      }, 4000)
+      // Find the original song object to return
+      const originalSong = songs.find(s => s.id === winner.id)
+      if (originalSong) {
+        setTimeout(() => {
+          onSpinComplete(originalSong)
+        }, 4000)
+      }
     }
-  }, [isSpinning, hasSpun, segments, bananaSongs, allSongsForRegular, rotation, onSpinComplete])
+  }, [isSpinning, hasSpun, displaySegments, wheelSongs, songs, rotation, onSpinComplete])
 
   // Reset spin state
   useEffect(() => {
@@ -299,7 +202,7 @@ export function SpinWheel({ songs, isSpinning, onSpinComplete }: SpinWheelProps)
         <circle cx="160" cy="160" r="158" fill="none" stroke="#374151" strokeWidth="4" />
         
         {/* Segments */}
-        {segments.map((seg) => {
+        {displaySegments.map((seg) => {
           const textPos = getTextPosition(seg.midAngle, seg.angle)
           const showText = seg.angle > 8
           
@@ -351,22 +254,21 @@ export function SpinWheel({ songs, isSpinning, onSpinComplete }: SpinWheelProps)
       
       {/* Legend */}
       <div className="mt-4 text-xs text-muted-foreground text-center space-y-1">
-        <div>Segment size = probability (based on points)</div>
-        {bananaSongs.length > 0 && (
-          <div className="flex items-center justify-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-200 rounded text-yellow-800">
-              <img src="/banana sticker.png" alt="🍌" className="w-4 h-4" /> 50% (banana only)
-            </span>
-            <span>+</span>
-            <span className="px-2 py-0.5 bg-gray-200 rounded text-gray-700">
-              50% (everyone)
-            </span>
-          </div>
-        )}
-        {bananaSongs.length > 0 && (
-          <div className="text-[10px] text-muted-foreground/70">
-            Banana songs appear in both sections!
-          </div>
+        {layout.hasBananaSection ? (
+          <>
+            <div className="flex items-center justify-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-200 rounded text-yellow-800">
+                <img src="/banana sticker.png" alt="🍌" className="w-4 h-4" /> 50% - weighted by banana count
+              </span>
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <span className="px-2 py-0.5 bg-gray-200 rounded text-gray-700">
+                50% - weighted by points (all songs)
+              </span>
+            </div>
+          </>
+        ) : (
+          <div>Segment size = probability (weighted by points)</div>
         )}
       </div>
     </div>

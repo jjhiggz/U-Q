@@ -25,7 +25,7 @@ const validateUrl = (url: string, platform: 'youtube' | 'spotify' | 'soundcloud'
 export const getSongs = createServerFn().handler(async () => {
   return await db.select().from(songs)
     .where(isNull(songs.archivedAt))
-    .orderBy(desc(songs.bananaSticker), desc(songs.points), desc(songs.submittedAt))
+    .orderBy(desc(songs.bananaStickers), desc(songs.points), desc(songs.submittedAt))
 })
 
 export const getArchivedSongs = createServerFn().handler(async () => {
@@ -162,11 +162,12 @@ export const addPoints = createServerFn({ method: 'POST' })
     return { success: true }
   })
 
-export const toggleBananaSticker = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: number; value: boolean }) => data)
+export const updateBananaStickers = createServerFn({ method: 'POST' })
+  .inputValidator((data: { id: number; delta: number }) => data)
   .handler(async ({ data }) => {
     await db.update(songs)
-      .set({ bananaSticker: data.value })
+      // Never allow banana stickers to drop below 0
+      .set({ bananaStickers: sql`GREATEST(${songs.bananaStickers} + ${data.delta}, 0)` })
       .where(eq(songs.id, data.id))
     return { success: true }
   })

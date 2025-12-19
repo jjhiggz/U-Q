@@ -1,4 +1,6 @@
-import { useState, useCallback } from 'react'
+import { Pin, RotateCcw, Sparkles } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -6,16 +8,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
 import { SpinWheel } from './SpinWheel'
-import { Sparkles, Pin, RotateCcw } from 'lucide-react'
 
 interface Song {
   id: number
   title: string
   artist: string
   points: number
-  bananaSticker: boolean
+  bananaStickers: number
 }
 
 interface SpinWheelModalProps {

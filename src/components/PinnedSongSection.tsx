@@ -17,7 +17,7 @@ interface Song {
   instagramUrl?: string | null
   tiktokUrl?: string | null
   points: number
-  bananaSticker: boolean
+  bananaStickers: number
   archivedAt: Date | string | null
 }
 
@@ -126,8 +126,13 @@ export function PinnedSongSection({ archivedSongs, isAdmin }: PinnedSongSectionP
               {/* Song details */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  {currentSong.bananaSticker && (
-                    <img src="/banana sticker.png" alt="🍌" className="w-5 h-5" title="Banana Sticker" />
+                  {currentSong.bananaStickers > 0 && (
+                    <span className="flex items-center gap-0.5" title={`${currentSong.bananaStickers} banana sticker${currentSong.bananaStickers > 1 ? 's' : ''}`}>
+                      {Array.from({ length: Math.min(currentSong.bananaStickers, 5) }).map((_, i) => (
+                        <img key={i} src="/banana sticker.png" alt="🍌" className="w-5 h-5" />
+                      ))}
+                      {currentSong.bananaStickers > 5 && <span className="text-xs text-muted-foreground">+{currentSong.bananaStickers - 5}</span>}
+                    </span>
                   )}
                   <h3 className="text-xl font-bold truncate">{currentSong.title}</h3>
                 </div>
