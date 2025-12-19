@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3000",
+    "vercel-build": "tsx scripts/migrate.ts && vite build",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",

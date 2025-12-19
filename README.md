@@ -46,6 +46,23 @@ npm run check
 
 - Set the `VITE_CLERK_PUBLISHABLE_KEY` in your `.env.local`.
 
+## Deploying to Vercel (Neon Postgres)
+
+### Environment variables
+- `DATABASE_URL`: Neon **pooled** Postgres connection string (recommended for serverless).
+- `VITE_CLERK_PUBLISHABLE_KEY`: Clerk publishable key (required).
+
+### Automatic migrations on deploy
+This repo uses **Drizzle migration files** under `drizzle/` and runs migrations automatically during Vercel builds via the `vercel-build` script:
+- `vercel-build`: `tsx scripts/migrate.ts && vite build`
+
+The migration runner uses a Postgres advisory lock to avoid parallel deploy race conditions.
+
+### Clerk dashboard settings
+In Clerk, add your Vercel domain to:
+- Allowed Origins
+- Redirect URLs (sign-in/sign-up)
+
 
 
 ## Routing
