@@ -39,3 +39,4 @@ If a migration fails to apply during deployment, you can run it manually:
 DATABASE_URL="your-production-url" NODE_ENV=production npx tsx scripts/migrate.ts
 ```
 
+

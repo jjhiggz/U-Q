@@ -3,19 +3,22 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { deleteSong } from '@/server/songs'
-import { ChevronLeft, ChevronRight, Trash2, Youtube, Radio } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, Radio, Link, ExternalLink } from 'lucide-react'
 
 interface Song {
   id: number
   title: string
   artist: string
+  nameInChat?: string | null
   notes?: string | null
   genres?: string | null
+  songLink?: string | null
   youtubeUrl?: string | null
   spotifyUrl?: string | null
   soundcloudUrl?: string | null
   instagramUrl?: string | null
   tiktokUrl?: string | null
+  facebookUrl?: string | null
   points: number
   bananaStickers: number
   archivedAt: Date | string | null
@@ -102,7 +105,9 @@ export function PinnedSongSection({ archivedSongs, isAdmin }: PinnedSongSectionP
     return d.toLocaleString()
   }
 
-  const hasSocialLinks = currentSong.youtubeUrl || currentSong.spotifyUrl || currentSong.soundcloudUrl || currentSong.instagramUrl || currentSong.tiktokUrl
+  // Get the song link (prefer songLink, fallback to spotifyUrl for legacy)
+  const songLinkUrl = currentSong.songLink || currentSong.spotifyUrl
+  const hasSocialLinks = currentSong.youtubeUrl || currentSong.soundcloudUrl || currentSong.instagramUrl || currentSong.tiktokUrl || currentSong.facebookUrl
 
   return (
     <Card className="mb-6 border-yellow-500/50 bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-red-500/10 overflow-hidden">
@@ -136,7 +141,12 @@ export function PinnedSongSection({ archivedSongs, isAdmin }: PinnedSongSectionP
                   )}
                   <h3 className="text-xl font-bold truncate">{currentSong.title}</h3>
                 </div>
-                <p className="text-muted-foreground">by {currentSong.artist}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-muted-foreground">by {currentSong.artist}</p>
+                  {currentSong.nameInChat && (
+                    <span className="text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">@{currentSong.nameInChat}</span>
+                  )}
+                </div>
                 
                 {currentSong.genres && (
                   <div className="flex flex-wrap gap-1 mt-2">
@@ -152,69 +162,86 @@ export function PinnedSongSection({ archivedSongs, isAdmin }: PinnedSongSectionP
                   <p className="text-sm text-muted-foreground mt-2 italic">"{currentSong.notes}"</p>
                 )}
 
-                {/* Social Media Links */}
+                {/* Song Link - THE MAIN LINK TO LISTEN */}
+                {songLinkUrl && (
+                  <a
+                    href={songLinkUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:from-purple-600 hover:to-pink-600 transition-colors shadow-md hover:shadow-lg"
+                  >
+                    <Link className="w-4 h-4" />
+                    Listen to Song
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+
+                {/* Artist Social Media Links */}
                 {hasSocialLinks && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {currentSong.youtubeUrl && (
-                      <a
-                        href={currentSong.youtubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition-colors"
-                        title="YouTube"
-                      >
-                        <Youtube className="w-3.5 h-3.5" />
-                        YouTube
-                      </a>
-                    )}
-                    {currentSong.spotifyUrl && (
-                      <a
-                        href={currentSong.spotifyUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500 text-white text-xs font-medium hover:bg-green-600 transition-colors"
-                        title="Spotify"
-                      >
-                        <span className="text-sm font-bold">●</span>
-                        Spotify
-                      </a>
-                    )}
-                    {currentSong.soundcloudUrl && (
-                      <a
-                        href={currentSong.soundcloudUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500 text-white text-xs font-medium hover:bg-orange-600 transition-colors"
-                        title="SoundCloud"
-                      >
-                        <span className="text-sm font-bold">☁</span>
-                        SoundCloud
-                      </a>
-                    )}
-                    {currentSong.instagramUrl && (
-                      <a
-                        href={currentSong.instagramUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white text-xs font-medium hover:opacity-90 transition-opacity"
-                        title="Instagram"
-                      >
-                        <span className="font-bold">IG</span>
-                        Instagram
-                      </a>
-                    )}
-                    {currentSong.tiktokUrl && (
-                      <a
-                        href={currentSong.tiktokUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black text-white text-xs font-medium hover:bg-gray-800 transition-colors"
-                        title="TikTok"
-                      >
-                        <span className="font-bold">TT</span>
-                        TikTok
-                      </a>
-                    )}
+                  <div className="mt-3">
+                    <p className="text-xs text-muted-foreground mb-1.5">Follow the artist:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {currentSong.youtubeUrl && (
+                        <a
+                          href={currentSong.youtubeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition-colors"
+                          title="YouTube"
+                        >
+                          <span className="font-bold">YT</span>
+                          YouTube
+                        </a>
+                      )}
+                      {currentSong.soundcloudUrl && (
+                        <a
+                          href={currentSong.soundcloudUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500 text-white text-xs font-medium hover:bg-orange-600 transition-colors"
+                          title="SoundCloud"
+                        >
+                          <span className="text-sm font-bold">☁</span>
+                          SoundCloud
+                        </a>
+                      )}
+                      {currentSong.instagramUrl && (
+                        <a
+                          href={currentSong.instagramUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white text-xs font-medium hover:opacity-90 transition-opacity"
+                          title="Instagram"
+                        >
+                          <span className="font-bold">IG</span>
+                          Instagram
+                        </a>
+                      )}
+                      {currentSong.tiktokUrl && (
+                        <a
+                          href={currentSong.tiktokUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black text-white text-xs font-medium hover:bg-gray-800 transition-colors"
+                          title="TikTok"
+                        >
+                          <span className="font-bold">TT</span>
+                          TikTok
+                        </a>
+                      )}
+                      {currentSong.facebookUrl && (
+                        <a
+                          href={currentSong.facebookUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors"
+                          title="Facebook"
+                        >
+                          <span className="font-bold">FB</span>
+                          Facebook
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
 
