@@ -175,16 +175,39 @@ export function PinnedSongSection({ archivedSongs, isAdmin }: PinnedSongSectionP
 
                 {/* Song Link - THE MAIN LINK TO LISTEN */}
                 {songLinkUrl && (
-                  <a
-                    href={songLinkUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:from-purple-600 hover:to-pink-600 transition-colors shadow-md hover:shadow-lg"
-                  >
-                    <Link className="w-4 h-4" />
-                    Listen to Song
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <a
+                      href={songLinkUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:from-purple-600 hover:to-pink-600 transition-colors shadow-md hover:shadow-lg"
+                    >
+                      <Link className="w-4 h-4" />
+                      Listen to Song
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                    <button
+                      onClick={() => copyToClipboard(songLinkUrl)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 font-medium transition-all ${
+                        copiedLink
+                          ? 'border-green-500 bg-green-50 text-green-700'
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-purple-400 hover:bg-purple-50'
+                      }`}
+                      title="Copy link to clipboard"
+                    >
+                      {copiedLink ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          Copy Link
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
 
                 {/* Artist Social Media Links */}

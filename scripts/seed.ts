@@ -6,7 +6,31 @@ import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
 import { songs } from '../src/db/schema'
 
-const SONG_COUNT = 100
+// Parse command line arguments
+const parseArgs = () => {
+  const args = process.argv.slice(2)
+  let count = 100 // default
+  let archived = 0 // default number of archived songs
+  
+  for (const arg of args) {
+    if (arg.startsWith('--count=')) {
+      const value = parseInt(arg.split('=')[1], 10)
+      if (!isNaN(value) && value > 0) {
+        count = value
+      }
+    }
+    if (arg.startsWith('--archived=')) {
+      const value = parseInt(arg.split('=')[1], 10)
+      if (!isNaN(value) && value >= 0) {
+        archived = value
+      }
+    }
+  }
+  
+  return { count, archived }
+}
+
+const { count: SONG_COUNT, archived: ARCHIVED_COUNT } = parseArgs()
 
 // Realistic genres for music submissions
 const GENRES = [
@@ -181,13 +205,15 @@ async function seed() {
   const pool = new Pool({ connectionString: databaseUrl })
   const db = drizzle(pool)
 
-  console.log(`🌱 Seeding ${SONG_COUNT} songs with realistic data...`)
+  console.log(`\n🌱 Seeding database with realistic data...`)
+  console.log(`   Queue songs: ${SONG_COUNT}`)
+  console.log(`   Archived songs: ${ARCHIVED_COUNT}`)
 
   // Clear existing songs
   await db.delete(songs)
   console.log('✓ Cleared existing songs')
 
-  // Generate fake songs with realistic data
+  // Generate fake songs for the queue (not archived)
   const fakeSongs = Array.from({ length: SONG_COUNT }, () => {
     const artist = faker.music.artist()
     
@@ -208,43 +234,77 @@ async function seed() {
       points: faker.number.int({ min: 1, max: 15 }),
       bananaStickers: generateBananaStickers(),
       submittedAt: faker.date.recent({ days: 14 }),
+      archivedAt: null,
     }
   })
 
+  // Generate archived/pinned songs
+  const archivedSongs = Array.from({ length: ARCHIVED_COUNT }, (_, i) => {
+    const artist = faker.music.artist()
+    // Archived songs are spaced out over the past few hours
+    const hoursAgo = ARCHIVED_COUNT - i // most recent = smallest index
+    
+    return {
+      title: faker.music.songName(),
+      artist,
+      nameInChat: generateNameInChat(),
+      notes: getRandomNote(),
+      genres: generateGenres(),
+      songLink: generateSongLink(artist),
+      youtubeUrl: generateYoutubeUrl(artist),
+      soundcloudUrl: generateSoundcloudUrl(artist),
+      instagramUrl: generateInstagramUrl(artist),
+      tiktokUrl: generateTiktokUrl(artist),
+      facebookUrl: generateFacebookUrl(artist),
+      spotifyUrl: generateSpotifyUrl(),
+      status: 'pending' as const,
+      points: faker.number.int({ min: 1, max: 15 }),
+      bananaStickers: faker.number.int({ min: 0, max: 3 }),
+      submittedAt: faker.date.recent({ days: 14 }),
+      archivedAt: new Date(Date.now() - hoursAgo * 60 * 60 * 1000), // stagger by hours
+    }
+  })
+
+  const allSongs = [...fakeSongs, ...archivedSongs]
+
   // Log some stats
-  const withSongLink = fakeSongs.filter(s => s.songLink).length
-  const withYoutube = fakeSongs.filter(s => s.youtubeUrl).length
-  const withSoundcloud = fakeSongs.filter(s => s.soundcloudUrl).length
-  const withInstagram = fakeSongs.filter(s => s.instagramUrl).length
-  const withTiktok = fakeSongs.filter(s => s.tiktokUrl).length
-  const withSpotify = fakeSongs.filter(s => s.spotifyUrl).length
-  const withNotes = fakeSongs.filter(s => s.notes).length
-  const withGenres = fakeSongs.filter(s => s.genres).length
-  const withNameInChat = fakeSongs.filter(s => s.nameInChat).length
-  const withBananas = fakeSongs.filter(s => s.bananaStickers > 0).length
-  const totalBananas = fakeSongs.reduce((sum, s) => sum + s.bananaStickers, 0)
+  const withSongLink = allSongs.filter(s => s.songLink).length
+  const withYoutube = allSongs.filter(s => s.youtubeUrl).length
+  const withSoundcloud = allSongs.filter(s => s.soundcloudUrl).length
+  const withInstagram = allSongs.filter(s => s.instagramUrl).length
+  const withTiktok = allSongs.filter(s => s.tiktokUrl).length
+  const withSpotify = allSongs.filter(s => s.spotifyUrl).length
+  const withNotes = allSongs.filter(s => s.notes).length
+  const withGenres = allSongs.filter(s => s.genres).length
+  const withNameInChat = allSongs.filter(s => s.nameInChat).length
+  const withBananas = allSongs.filter(s => s.bananaStickers > 0).length
+  const totalBananas = allSongs.reduce((sum, s) => sum + s.bananaStickers, 0)
+  const totalSongs = allSongs.length
   
   console.log('\n📊 Data distribution:')
-  console.log(`   Song links: ${withSongLink}/${SONG_COUNT}`)
-  console.log(`   YouTube: ${withYoutube}/${SONG_COUNT}`)
-  console.log(`   SoundCloud: ${withSoundcloud}/${SONG_COUNT}`)
-  console.log(`   Instagram: ${withInstagram}/${SONG_COUNT}`)
-  console.log(`   TikTok: ${withTiktok}/${SONG_COUNT}`)
-  console.log(`   Spotify: ${withSpotify}/${SONG_COUNT}`)
-  console.log(`   Notes: ${withNotes}/${SONG_COUNT}`)
-  console.log(`   Genres: ${withGenres}/${SONG_COUNT}`)
-  console.log(`   Chat names: ${withNameInChat}/${SONG_COUNT}`)
+  console.log(`   Song links: ${withSongLink}/${totalSongs}`)
+  console.log(`   YouTube: ${withYoutube}/${totalSongs}`)
+  console.log(`   SoundCloud: ${withSoundcloud}/${totalSongs}`)
+  console.log(`   Instagram: ${withInstagram}/${totalSongs}`)
+  console.log(`   TikTok: ${withTiktok}/${totalSongs}`)
+  console.log(`   Spotify: ${withSpotify}/${totalSongs}`)
+  console.log(`   Notes: ${withNotes}/${totalSongs}`)
+  console.log(`   Genres: ${withGenres}/${totalSongs}`)
+  console.log(`   Chat names: ${withNameInChat}/${totalSongs}`)
   console.log(`   🍌 Bananas: ${withBananas} songs (${totalBananas} total stickers)\n`)
 
   // Insert in batches
   const batchSize = 25
-  for (let i = 0; i < fakeSongs.length; i += batchSize) {
-    const batch = fakeSongs.slice(i, i + batchSize)
+  for (let i = 0; i < allSongs.length; i += batchSize) {
+    const batch = allSongs.slice(i, i + batchSize)
     await db.insert(songs).values(batch)
-    console.log(`✓ Inserted songs ${i + 1} - ${Math.min(i + batchSize, fakeSongs.length)}`)
+    console.log(`✓ Inserted songs ${i + 1} - ${Math.min(i + batchSize, allSongs.length)}`)
   }
 
-  console.log(`\n🎵 Successfully seeded ${SONG_COUNT} songs with realistic data!`)
+  console.log(`\n🎵 Successfully seeded ${SONG_COUNT} queue songs + ${ARCHIVED_COUNT} archived songs!`)
+  console.log(`\n💡 Usage: npm run db:seed -- --count=N --archived=M`)
+  console.log(`   --count=N    Number of songs in queue (default: 100)`)
+  console.log(`   --archived=M Number of archived/pinned songs (default: 0)`)
   
   await pool.end()
   process.exit(0)
