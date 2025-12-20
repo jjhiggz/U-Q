@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { deleteSong } from '@/server/songs'
-import { ChevronLeft, ChevronRight, Trash2, Radio, Link, ExternalLink } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, Radio, Link, ExternalLink, Copy, Check } from 'lucide-react'
 
 interface Song {
   id: number
@@ -33,8 +33,19 @@ export function PinnedSongSection({ archivedSongs, isAdmin }: PinnedSongSectionP
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLive, setIsLive] = useState(true)
   const [viewedSongId, setViewedSongId] = useState<number | null>(null)
+  const [copiedLink, setCopiedLink] = useState(false)
   const prevLengthRef = useRef(archivedSongs.length)
   const queryClient = useQueryClient()
+
+  const copyToClipboard = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedLink(true)
+      setTimeout(() => setCopiedLink(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
 
   // When in live mode, always snap to the most recent (index 0)
   // When not in live mode, maintain position on the same song by ID
