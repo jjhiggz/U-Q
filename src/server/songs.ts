@@ -23,10 +23,11 @@ export const checkCanSubmit = createServerFn({ method: 'POST' })
       return { canSubmit: true }
     }
     
+    // Only check for songs that are still in the queue (not archived)
     const existingSong = await db
       .select({ id: songs.id })
       .from(songs)
-      .where(eq(songs.submitterId, submitterId))
+      .where(sql`${songs.submitterId} = ${submitterId} AND ${songs.archivedAt} IS NULL`)
       .limit(1)
     
     return { 
@@ -97,15 +98,16 @@ export const submitSong = createServerFn({ method: 'POST' })
     allSubmitterIds?: string[] 
   }) => data)
   .handler(async ({ data }) => {
-    // Check if user already has a song in queue
+    // Check if user already has a song in queue (not archived)
     // Check all possible IDs (handles login/logout transitions)
     const idsToCheck = data.allSubmitterIds?.filter(Boolean) ?? (data.submitterId ? [data.submitterId] : [])
     
     if (idsToCheck.length > 0) {
+      // Only check for songs that are still in the queue (archivedAt IS NULL)
       const existingSong = await db
         .select({ id: songs.id })
         .from(songs)
-        .where(inArray(songs.submitterId, idsToCheck))
+        .where(sql`${songs.submitterId} IN (${sql.join(idsToCheck.map(id => sql`${id}`), sql`, `)}) AND ${songs.archivedAt} IS NULL`)
         .limit(1)
       
       if (existingSong.length > 0) {
