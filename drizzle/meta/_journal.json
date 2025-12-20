@@ -50,6 +50,13 @@
       "when": 1766185788620,
       "tag": "0006_add-name-in-chat",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1766300000000,
+      "tag": "0007_fix-banana-stickers-type",
+      "breakpoints": true
     }
   ]
 }
