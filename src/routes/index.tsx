@@ -304,7 +304,9 @@ function App() {
 
       <PinnedSongSection 
         archivedSongs={archivedSongs} 
-        isAdmin={isKnownAdminUser} 
+        isAdmin={isKnownAdminUser}
+        submitterId={submitterId}
+        clientId={clientId} 
       />
 
       {isKnownAdminUser && (
