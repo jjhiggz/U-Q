@@ -4,7 +4,7 @@ Single-process song queue built with TanStack Start.
 
 ## Stack
 
-- Bun package manager and production runtime
+- Bun package manager and Vercel Functions runtime
 - TanStack Start, Router, and Query
 - Effect services, layers, tagged errors, transactions, and spans
 - Better Auth email/password plus anonymous guest sessions
@@ -100,7 +100,15 @@ the production build, and desktop/mobile Playwright smoke tests.
 
 ## Deployment
 
-Fly uses the included Dockerfile and runs Drizzle migrations as a release command.
-Set `DATABASE_URL` to the Neon pooled connection string and set
-`BETTER_AUTH_SECRET` with `fly secrets set`. Choose the Fly app name during
-`fly launch`.
+Vercel builds Nitro's native Build Output API artifact from the repository's
+`bun run build` command. Configure these variables for production:
+
+- `DATABASE_URL`: Neon PostgreSQL connection string
+- `BETTER_AUTH_SECRET`: at least 32 random characters
+- `BETTER_AUTH_URL`: canonical production URL
+- `ENABLE_DEV_TOOLS`: `true` only when the GM-only route should be available
+
+Production migrations never run during preview builds. Run the **Migrate
+Production Database** GitHub Actions workflow manually before deploying code
+that requires a new schema. Its `production` environment requires a
+`DATABASE_URL` secret.

@@ -6,7 +6,11 @@ test("renders the song queue", async ({ page }) => {
 		page.getByRole("heading", { name: "UQ", level: 1 }).last(),
 	).toBeVisible();
 	await expect(page.getByText("Queue", { exact: true })).toBeVisible();
-	await expect(page.getByText("Be the first to submit a song!")).toBeVisible();
+	await expect(
+		page.getByText(
+			/^(Be the first to submit a song!|\d+ songs? — ranked by points)$/,
+		),
+	).toBeVisible();
 });
 
 test("redirects unauthenticated users away from dev tools", async ({
