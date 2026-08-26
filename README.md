@@ -37,6 +37,15 @@ bun run dev:setup -p 3001 -dbp 55433
 `bun run dev -p 3001 -dbp 55433` starts only TanStack Start. `bun run db:up`
 and `bun run db:down` manage the worktree-scoped database.
 
+Seed the local GM account after the database is running:
+
+```bash
+bun run db:seed:admin
+```
+
+The GM email is `jonathan.higger@gmail.com`; its local password comes from
+`ADMIN_PASSWORD` and is never committed.
+
 ## Architecture
 
 Features own their transport, client state, schemas, and server services:

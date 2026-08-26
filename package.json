@@ -24,6 +24,7 @@
 		"db:pull": "drizzle-kit pull",
 		"db:studio": "drizzle-kit studio",
 		"db:seed": "bun scripts/seed.ts",
+		"db:seed:admin": "bun scripts/seed-admin.ts",
 		"start": "bun .output/server/index.mjs"
 	},
 	"dependencies": {
