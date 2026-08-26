@@ -1,3 +1,5 @@
+// lint-ignore-file: no-imperative-loops
+
 import { describe, it, expect } from "vitest";
 import {
 	buildWheelLayout,
@@ -40,24 +42,24 @@ describe("Wheel Algorithm", () => {
 			},
 		];
 
-		// Add 97 more songs with 10 points each (970 total for non-banana)
-		for (let i = 4; i <= 100; i++) {
-			songs.push({
-				id: i,
-				title: `Song ${i}`,
-				artist: `Artist ${i}`,
+		const remainingSongs = Array.from({ length: 97 }, (_, index) => {
+			const id = index + 4;
+			return {
+				id,
+				title: `Song ${id}`,
+				artist: `Artist ${id}`,
 				points: 10,
 				bananaStickers: 0,
-			});
-		}
+			};
+		});
 
-		return songs;
+		return [...songs, ...remainingSongs];
 	};
 
 	describe("buildWheelLayout", () => {
 		it("should have hasBananaSection=true when banana songs exist", () => {
 			const songs = createTestSongs();
-			const layout = buildWheelLayout(songs);
+			const layout = buildWheelLayout({ songs });
 
 			expect(layout.hasBananaSection).toBe(true);
 			expect(layout.totalBananas).toBe(6); // 1 + 2 + 3 = 6
@@ -81,7 +83,7 @@ describe("Wheel Algorithm", () => {
 					bananaStickers: 0,
 				},
 			];
-			const layout = buildWheelLayout(songs);
+			const layout = buildWheelLayout({ songs });
 
 			expect(layout.hasBananaSection).toBe(false);
 			expect(layout.totalBananas).toBe(0);
@@ -89,7 +91,7 @@ describe("Wheel Algorithm", () => {
 
 		it("should create separate segments for banana section and points section", () => {
 			const songs = createTestSongs();
-			const layout = buildWheelLayout(songs);
+			const layout = buildWheelLayout({ songs });
 
 			const bananaSegments = layout.segments.filter((s) => s.isBananaSection);
 			const pointsSegments = layout.segments.filter((s) => !s.isBananaSection);
@@ -103,7 +105,7 @@ describe("Wheel Algorithm", () => {
 
 		it("should allocate 180 degrees to banana section", () => {
 			const songs = createTestSongs();
-			const layout = buildWheelLayout(songs);
+			const layout = buildWheelLayout({ songs });
 
 			const bananaSegments = layout.segments.filter((s) => s.isBananaSection);
 			const bananaDegreesTotal = bananaSegments.reduce(
@@ -116,7 +118,7 @@ describe("Wheel Algorithm", () => {
 
 		it("should allocate 180 degrees to points section when bananas exist", () => {
 			const songs = createTestSongs();
-			const layout = buildWheelLayout(songs);
+			const layout = buildWheelLayout({ songs });
 
 			const pointsSegments = layout.segments.filter((s) => !s.isBananaSection);
 			const pointsDegreesTotal = pointsSegments.reduce(
@@ -144,7 +146,7 @@ describe("Wheel Algorithm", () => {
 					bananaStickers: 0,
 				},
 			];
-			const layout = buildWheelLayout(songs);
+			const layout = buildWheelLayout({ songs });
 
 			const pointsDegreesTotal = layout.segments.reduce(
 				(sum, s) => sum + s.angle,
@@ -155,7 +157,7 @@ describe("Wheel Algorithm", () => {
 
 		it("should weight banana section by banana count, not points", () => {
 			const songs = createTestSongs();
-			const layout = buildWheelLayout(songs, 12345); // Use seed for deterministic order
+			const layout = buildWheelLayout({ songs, shuffleSeed: 12345 }); // Use seed for deterministic order
 
 			const bananaSegments = layout.segments.filter((s) => s.isBananaSection);
 
@@ -189,7 +191,7 @@ describe("Wheel Algorithm", () => {
 					bananaStickers: 0,
 				},
 			];
-			const layout = buildWheelLayout(songs, 12345);
+			const layout = buildWheelLayout({ songs, shuffleSeed: 12345 });
 
 			const pointsSegments = layout.segments.filter((s) => !s.isBananaSection);
 
@@ -211,7 +213,11 @@ describe("Wheel Algorithm", () => {
 
 			// Use randomValue = 0.3 to force banana section selection
 			// Use randomValueWithinSection = 0.5 to pick middle of distribution
-			const result = selectWinner(songs, 0.3, 0.5);
+			const result = selectWinner({
+				songs,
+				randomValue: 0.3,
+				randomValueWithinSection: 0.5,
+			});
 
 			expect(result).not.toBeNull();
 			expect(result?.fromBananaSection).toBe(true);
@@ -222,7 +228,11 @@ describe("Wheel Algorithm", () => {
 			const songs = createTestSongs();
 
 			// Use randomValue = 0.7 to force points section selection
-			const result = selectWinner(songs, 0.7, 0.5);
+			const result = selectWinner({
+				songs,
+				randomValue: 0.7,
+				randomValueWithinSection: 0.5,
+			});
 
 			expect(result).not.toBeNull();
 			expect(result?.fromBananaSection).toBe(false);
@@ -247,7 +257,11 @@ describe("Wheel Algorithm", () => {
 			];
 
 			// Even with randomValue < 0.5, should not select from banana section
-			const result = selectWinner(songs, 0.3, 0.5);
+			const result = selectWinner({
+				songs,
+				randomValue: 0.3,
+				randomValueWithinSection: 0.5,
+			});
 
 			expect(result).not.toBeNull();
 			expect(result?.fromBananaSection).toBe(false);
@@ -276,7 +290,11 @@ describe("Wheel Algorithm", () => {
 
 			// With randomValue 0.3 (banana section) and within-section value 0.5,
 			// should select song 2 (since 0.5 * 100 = 50 which is > 1)
-			const result = selectWinner(songs, 0.3, 0.5);
+			const result = selectWinner({
+				songs,
+				randomValue: 0.3,
+				randomValueWithinSection: 0.5,
+			});
 
 			expect(result?.winner.id).toBe(2);
 		});
@@ -303,7 +321,11 @@ describe("Wheel Algorithm", () => {
 			// Song 2: 99/100 = 99%
 
 			// With within-section value 0.5, should select song 2
-			const result = selectWinner(songs, 0.9, 0.5);
+			const result = selectWinner({
+				songs,
+				randomValue: 0.9,
+				randomValueWithinSection: 0.5,
+			});
 
 			expect(result?.winner.id).toBe(2);
 		});
@@ -393,22 +415,38 @@ describe("Wheel Algorithm", () => {
 			];
 
 			// With random value 0.05 (5% through), should select A (10% of weight)
-			const resultA = weightedRandomSelect(items, (i) => i.weight, 0.05);
+			const resultA = weightedRandomSelect({
+				items,
+				getWeight: (item) => item.weight,
+				randomValue: 0.05,
+			});
 			expect(resultA?.name).toBe("A");
 
 			// With random value 0.5 (50% through), should select B
-			const resultB = weightedRandomSelect(items, (i) => i.weight, 0.5);
+			const resultB = weightedRandomSelect({
+				items,
+				getWeight: (item) => item.weight,
+				randomValue: 0.5,
+			});
 			expect(resultB?.name).toBe("B");
 		});
 
 		it("should return null for empty array", () => {
-			const result = weightedRandomSelect([], (i: number) => i, 0.5);
+			const result = weightedRandomSelect<number>({
+				items: [],
+				getWeight: (item) => item,
+				randomValue: 0.5,
+			});
 			expect(result).toBeNull();
 		});
 
 		it("should handle single item", () => {
 			const items = [{ name: "Only", weight: 5 }];
-			const result = weightedRandomSelect(items, (i) => i.weight, 0.999);
+			const result = weightedRandomSelect({
+				items,
+				getWeight: (item) => item.weight,
+				randomValue: 0.999,
+			});
 			expect(result?.name).toBe("Only");
 		});
 	});
@@ -417,8 +455,8 @@ describe("Wheel Algorithm", () => {
 		it("should produce consistent results with same seed", () => {
 			const items = [1, 2, 3, 4, 5];
 
-			const result1 = seededShuffle(items, 12345);
-			const result2 = seededShuffle(items, 12345);
+			const result1 = seededShuffle({ array: items, seed: 12345 });
+			const result2 = seededShuffle({ array: items, seed: 12345 });
 
 			expect(result1).toEqual(result2);
 		});
@@ -426,8 +464,8 @@ describe("Wheel Algorithm", () => {
 		it("should produce different results with different seeds", () => {
 			const items = [1, 2, 3, 4, 5];
 
-			const result1 = seededShuffle(items, 12345);
-			const result2 = seededShuffle(items, 54321);
+			const result1 = seededShuffle({ array: items, seed: 12345 });
+			const result2 = seededShuffle({ array: items, seed: 54321 });
 
 			expect(result1).not.toEqual(result2);
 		});
@@ -436,16 +474,16 @@ describe("Wheel Algorithm", () => {
 			const items = [1, 2, 3, 4, 5];
 			const original = [...items];
 
-			seededShuffle(items, 12345);
+			seededShuffle({ array: items, seed: 12345 });
 
 			expect(items).toEqual(original);
 		});
 
 		it("should contain all original items", () => {
 			const items = [1, 2, 3, 4, 5];
-			const shuffled = seededShuffle(items, 12345);
+			const shuffled = seededShuffle({ array: items, seed: 12345 });
 
-			expect(shuffled.sort()).toEqual(items.sort());
+			expect(new Set(shuffled)).toEqual(new Set(items));
 		});
 	});
 
@@ -461,7 +499,7 @@ describe("Wheel Algorithm", () => {
 			const iterations = 10000;
 
 			for (let i = 0; i < iterations; i++) {
-				const result = selectWinner(songs);
+				const result = selectWinner({ songs });
 				if (result?.fromBananaSection) {
 					bananaCount++;
 				} else {
@@ -491,7 +529,7 @@ describe("Wheel Algorithm", () => {
 
 			for (let i = 0; i < iterations; i++) {
 				// Force banana section selection
-				const result = selectWinner(songs, 0.3);
+				const result = selectWinner({ songs, randomValue: 0.3 });
 				if (result?.winner.id === 1) {
 					song1BananaWins++;
 				} else {
@@ -521,7 +559,7 @@ describe("Wheel Algorithm", () => {
 			const iterations = 10000;
 
 			for (let i = 0; i < iterations; i++) {
-				const result = selectWinner(songs);
+				const result = selectWinner({ songs });
 				if (result?.winner.id === 1) {
 					song1Wins++;
 				} else {
@@ -553,8 +591,8 @@ describe("Wheel Algorithm", () => {
 				},
 			];
 
-			const layout = buildWheelLayout(songs);
-			const result = selectWinner(songs);
+			const layout = buildWheelLayout({ songs });
+			const result = selectWinner({ songs });
 
 			expect(layout.segments.length).toBe(2); // One banana segment, one points segment
 			expect(result?.winner.id).toBe(1);
@@ -571,8 +609,8 @@ describe("Wheel Algorithm", () => {
 				},
 			];
 
-			const layout = buildWheelLayout(songs);
-			const result = selectWinner(songs);
+			const layout = buildWheelLayout({ songs });
+			const result = selectWinner({ songs });
 
 			expect(layout.segments.length).toBe(1); // Only points segment
 			expect(layout.hasBananaSection).toBe(false);
@@ -580,8 +618,8 @@ describe("Wheel Algorithm", () => {
 		});
 
 		it("should handle empty song list", () => {
-			const layout = buildWheelLayout([]);
-			const result = selectWinner([]);
+			const layout = buildWheelLayout({ songs: [] });
+			const result = selectWinner({ songs: [] });
 
 			expect(layout.segments.length).toBe(0);
 			expect(layout.hasBananaSection).toBe(false);
@@ -594,7 +632,7 @@ describe("Wheel Algorithm", () => {
 				{ id: 2, title: "Song 2", artist: "B", points: 20, bananaStickers: 2 },
 			];
 
-			const layout = buildWheelLayout(songs);
+			const layout = buildWheelLayout({ songs });
 
 			// Banana section should have 2 segments
 			const bananaSegments = layout.segments.filter((s) => s.isBananaSection);

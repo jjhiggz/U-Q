@@ -1,6 +1,10 @@
 import * as Sentry from "@sentry/tanstackstart-react";
-import { Cause, Effect, Either, Layer, ManagedRuntime } from "effect";
-import type { I__RemoteFailure, RemoteResult } from "./remote-result";
+import { Cause, Effect, Either, Exit, Layer, ManagedRuntime } from "effect";
+import type {
+	I__RemoteFailure,
+	RemoteFailure,
+	RemoteResult,
+} from "./remote-result";
 import { Layer__Database } from "@/server/database/database.service";
 import { Layer_Repo__Songs } from "@/features/song-queue/server/songs.repository";
 import {
@@ -19,20 +23,24 @@ type AppServices = Svc__Songs;
 export async function runOperation<A, E extends I__RemoteFailure>(
 	operation: Effect.Effect<A, E, AppServices>,
 ): Promise<RemoteResult<A, E>> {
-	try {
-		const result = await runtime.runPromise(Effect.either(operation));
-		return Either.match(result, {
-			onLeft: (error) => ({
-				_tag: "Failure" as const,
-				error: toRemoteFailure(error),
+	const exit = await runtime.runPromiseExit(Effect.either(operation));
+
+	return Exit.match(exit, {
+		onFailure: (cause) => {
+			const defect = Cause.squash(cause);
+			Sentry.captureException(defect);
+			console.error("Unexpected Effect operation defect", defect);
+			throw new Error("The operation failed unexpectedly.", { cause: defect });
+		},
+		onSuccess: (result) =>
+			Either.match(result, {
+				onLeft: (error) => ({
+					_tag: "Failure" as const,
+					error: toRemoteFailure(error),
+				}),
+				onRight: (value) => ({ _tag: "Success" as const, value }),
 			}),
-			onRight: (value) => ({ _tag: "Success" as const, value }),
-		});
-	} catch (defect) {
-		Sentry.captureException(defect);
-		console.error("Unexpected Effect operation defect", defect);
-		throw new Error("The operation failed unexpectedly.", { cause: defect });
-	}
+	});
 }
 
 export function runOperationWith<RProvided>(
@@ -44,7 +52,9 @@ export function runOperationWith<RProvided>(
 		runOperation(operation.pipe(Effect.provide(layer)));
 }
 
-function toRemoteFailure<E extends I__RemoteFailure>(error: E) {
+function toRemoteFailure<E extends I__RemoteFailure>(
+	error: E,
+): RemoteFailure<E> {
 	const { _tag, message } = error;
 	const details = Object.fromEntries(
 		Object.entries(error).filter(
@@ -52,11 +62,13 @@ function toRemoteFailure<E extends I__RemoteFailure>(error: E) {
 		),
 	);
 
+	// TypeScript cannot prove a filtered generic object's mapped-key shape.
+	// lint-ignore: no-as-cast
 	return {
 		_tag,
 		message,
 		...details,
-	} as import("./remote-result").RemoteFailure<E>;
+	} as RemoteFailure<E>;
 }
 
 export function annotateOperation<A, E, R>(args: {

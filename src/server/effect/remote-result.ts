@@ -32,8 +32,5 @@ export function unwrapRemoteResult<A, E extends I__RemoteFailure>(
 		return result.value;
 	}
 
-	throw Object.assign(
-		new Error(result.error.message),
-		result.error,
-	) as RemoteError<E>;
+	throw Object.assign(new Error(result.error.message), result.error);
 }

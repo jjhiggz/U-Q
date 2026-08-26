@@ -8,56 +8,57 @@ import type {
 import { annotateOperation } from "@/server/effect/runtime";
 import { Svc__Songs } from "./songs.service";
 
-const operation = <A, E, R>(name: string, effect: Effect.Effect<A, E, R>) =>
-	annotateOperation({ name, effect });
-
 export const getSongsOperation = () =>
 	Effect.gen(function* () {
 		const service = yield* Svc__Songs;
 		return yield* service.listActive();
-	}).pipe((effect) => operation("songs.listActive", effect));
+	}).pipe((effect) => annotateOperation({ name: "songs.listActive", effect }));
 
 export const getArchivedSongsOperation = () =>
 	Effect.gen(function* () {
 		const service = yield* Svc__Songs;
 		return yield* service.listArchived();
-	}).pipe((effect) => operation("songs.listArchived", effect));
+	}).pipe((effect) =>
+		annotateOperation({ name: "songs.listArchived", effect }),
+	);
 
 export const submitSongOperation = (input: I__SubmitSongInput) =>
 	Effect.gen(function* () {
 		const service = yield* Svc__Songs;
 		return yield* service.submit(input);
-	}).pipe((effect) => operation("songs.submit", effect));
+	}).pipe((effect) => annotateOperation({ name: "songs.submit", effect }));
 
 export const updateSongOperation = (input: I__UpdateSongInput) =>
 	Effect.gen(function* () {
 		const service = yield* Svc__Songs;
 		return yield* service.update(input);
-	}).pipe((effect) => operation("songs.update", effect));
+	}).pipe((effect) => annotateOperation({ name: "songs.update", effect }));
 
 export const deleteSongOperation = (id: number) =>
 	Effect.gen(function* () {
 		const service = yield* Svc__Songs;
 		return yield* service.delete(id);
-	}).pipe((effect) => operation("songs.delete", effect));
+	}).pipe((effect) => annotateOperation({ name: "songs.delete", effect }));
 
 export const archiveSongOperation = (id: number) =>
 	Effect.gen(function* () {
 		const service = yield* Svc__Songs;
 		return yield* service.archive(id);
-	}).pipe((effect) => operation("songs.archive", effect));
+	}).pipe((effect) => annotateOperation({ name: "songs.archive", effect }));
 
 export const clearSongsOperation = () =>
 	Effect.gen(function* () {
 		const service = yield* Svc__Songs;
 		return yield* service.clear();
-	}).pipe((effect) => operation("songs.clear", effect));
+	}).pipe((effect) => annotateOperation({ name: "songs.clear", effect }));
 
 export const adjustSongPointsOperation = (input: I__AdjustSongPointsInput) =>
 	Effect.gen(function* () {
 		const service = yield* Svc__Songs;
 		return yield* service.adjustPoints(input);
-	}).pipe((effect) => operation("songs.adjustPoints", effect));
+	}).pipe((effect) =>
+		annotateOperation({ name: "songs.adjustPoints", effect }),
+	);
 
 export const adjustBananaStickersOperation = (
 	input: I__AdjustBananaStickersInput,
@@ -65,4 +66,6 @@ export const adjustBananaStickersOperation = (
 	Effect.gen(function* () {
 		const service = yield* Svc__Songs;
 		return yield* service.adjustBananaStickers(input);
-	}).pipe((effect) => operation("songs.adjustBananaStickers", effect));
+	}).pipe((effect) =>
+		annotateOperation({ name: "songs.adjustBananaStickers", effect }),
+	);

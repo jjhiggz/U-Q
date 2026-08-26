@@ -3,7 +3,7 @@ import {
 	Scripts,
 	createRootRouteWithContext,
 } from "@tanstack/react-router";
-import Header from "../components/Header";
+import { C__Header } from "@/features/authentication/components/C__Header";
 
 import appCss from "../styles.css?url";
 
@@ -45,7 +45,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<HeadContent />
 			</head>
 			<body>
-				<Header />
+				<C__Header />
 				{children}
 				<footer className="py-6 text-center text-sm text-muted-foreground border-t mt-8">
 					this stupid app was made by your host higgz

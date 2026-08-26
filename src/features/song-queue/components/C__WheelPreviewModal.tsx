@@ -14,7 +14,7 @@ interface Song {
 	bananaStickers: number;
 }
 
-interface WheelPreviewModalProps {
+interface I_Props_C__WheelPreviewModal {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	song: Song | null;
@@ -25,12 +25,12 @@ const HIGHLIGHTED_COLOR = "#8B5CF6"; // Purple for highlighted song
 const BANANA_HIGHLIGHTED_COLOR = "#F59E0B"; // Amber for highlighted banana song
 const GRAYED_COLOR = "#E5E7EB"; // Gray for other songs
 
-export function WheelPreviewModal({
+export function C__WheelPreviewModal({
 	open,
 	onOpenChange,
 	song,
 	allSongs,
-}: WheelPreviewModalProps) {
+}: I_Props_C__WheelPreviewModal) {
 	if (!song) return null;
 
 	const bananaSongs = allSongs.filter((s) => s.bananaStickers > 0);
@@ -59,7 +59,7 @@ export function WheelPreviewModal({
 		segmentId: string;
 	}
 
-	const segments: Segment[] = [];
+	let segments: Segment[] = [];
 	let currentAngle = -90;
 
 	// Banana section segments (only banana songs) - weighted by banana COUNT, not points
@@ -73,14 +73,17 @@ export function WheelPreviewModal({
 			const angle =
 				(s.bananaStickers / totalBananaCount) * bananaSectionDegrees;
 
-			segments.push({
-				song: s,
-				startAngle: currentAngle,
-				endAngle: currentAngle + angle,
-				isHighlighted: s.id === song.id,
-				isBananaSection: true,
-				segmentId: `banana-${s.id}`,
-			});
+			segments = [
+				...segments,
+				{
+					song: s,
+					startAngle: currentAngle,
+					endAngle: currentAngle + angle,
+					isHighlighted: s.id === song.id,
+					isBananaSection: true,
+					segmentId: `banana-${s.id}`,
+				},
+			];
 
 			currentAngle += angle;
 		});
@@ -97,14 +100,17 @@ export function WheelPreviewModal({
 			const songPoints = s.points || 1;
 			const angle = (songPoints / regularPointsTotal) * regularSectionDegrees;
 
-			segments.push({
-				song: s,
-				startAngle: currentAngle,
-				endAngle: currentAngle + angle,
-				isHighlighted: s.id === song.id,
-				isBananaSection: false,
-				segmentId: `regular-${s.id}`,
-			});
+			segments = [
+				...segments,
+				{
+					song: s,
+					startAngle: currentAngle,
+					endAngle: currentAngle + angle,
+					isHighlighted: s.id === song.id,
+					isBananaSection: false,
+					segmentId: `regular-${s.id}`,
+				},
+			];
 
 			currentAngle += angle;
 		});
@@ -148,7 +154,13 @@ export function WheelPreviewModal({
 	}
 
 	// Create SVG arc path
-	const createSlicePath = (startAngle: number, endAngle: number) => {
+	const createSlicePath = ({
+		startAngle,
+		endAngle,
+	}: {
+		startAngle: number;
+		endAngle: number;
+	}) => {
 		const radius = 100;
 		const cx = 110;
 		const cy = 110;
@@ -216,24 +228,30 @@ export function WheelPreviewModal({
 						/>
 
 						{/* Segments */}
-						{segments.map((seg) => {
-							let color = GRAYED_COLOR;
-							if (seg.isHighlighted) {
-								color = seg.isBananaSection
-									? BANANA_HIGHLIGHTED_COLOR
-									: HIGHLIGHTED_COLOR;
-							}
+						{segments.map(
+							/** @imperative */
+							(seg) => {
+								let color = GRAYED_COLOR;
+								if (seg.isHighlighted) {
+									color = seg.isBananaSection
+										? BANANA_HIGHLIGHTED_COLOR
+										: HIGHLIGHTED_COLOR;
+								}
 
-							return (
-								<path
-									key={seg.segmentId}
-									d={createSlicePath(seg.startAngle, seg.endAngle)}
-									fill={color}
-									stroke="#fff"
-									strokeWidth="1.5"
-								/>
-							);
-						})}
+								return (
+									<path
+										key={seg.segmentId}
+										d={createSlicePath({
+											startAngle: seg.startAngle,
+											endAngle: seg.endAngle,
+										})}
+										fill={color}
+										stroke="#fff"
+										strokeWidth="1.5"
+									/>
+								);
+							},
+						)}
 
 						{/* Center circle */}
 						<circle cx="110" cy="110" r="20" fill="#1f2937" />

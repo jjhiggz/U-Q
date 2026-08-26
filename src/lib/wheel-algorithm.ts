@@ -1,3 +1,5 @@
+// lint-ignore-file: no-imperative-loops
+
 /**
  * Spin Wheel Algorithm
  *
@@ -51,10 +53,13 @@ export interface WheelLayout {
  * Songs with banana stickers appear twice: once in banana section, once in points section.
  * Songs without banana stickers only appear in points section.
  */
-export const buildWheelLayout = (
-	songs: WheelSong[],
-	shuffleSeed?: number,
-): WheelLayout => {
+export const buildWheelLayout = ({
+	songs,
+	shuffleSeed,
+}: {
+	readonly songs: WheelSong[];
+	readonly shuffleSeed?: number;
+}): WheelLayout => {
 	if (songs.length === 0) {
 		return {
 			segments: [],
@@ -75,12 +80,14 @@ export const buildWheelLayout = (
 	// Shuffle songs for display (keeps order consistent within session)
 	const shuffledBananaSongs =
 		shuffleSeed !== undefined
-			? seededShuffle(bananaSongs, shuffleSeed)
+			? seededShuffle({ array: bananaSongs, seed: shuffleSeed })
 			: bananaSongs;
 	const shuffledAllSongs =
-		shuffleSeed !== undefined ? seededShuffle(songs, shuffleSeed + 1) : songs;
+		shuffleSeed !== undefined
+			? seededShuffle({ array: songs, seed: shuffleSeed + 1 })
+			: songs;
 
-	const segments: WheelSegment[] = [];
+	let segments: WheelSegment[] = [];
 	let currentAngle = -90; // Start from top of wheel
 
 	// BANANA SECTION: 180 degrees (only if banana songs exist)
@@ -91,15 +98,18 @@ export const buildWheelLayout = (
 			// Weight by banana count, not points
 			const angle = (song.bananaStickers / totalBananas) * bananaDegreesTotal;
 
-			segments.push({
-				song,
-				startAngle: currentAngle,
-				endAngle: currentAngle + angle,
-				angle,
-				midAngle: currentAngle + angle / 2,
-				isBananaSection: true,
-				segmentId: `banana-${song.id}`,
-			});
+			segments = [
+				...segments,
+				{
+					song,
+					startAngle: currentAngle,
+					endAngle: currentAngle + angle,
+					angle,
+					midAngle: currentAngle + angle / 2,
+					isBananaSection: true,
+					segmentId: `banana-${song.id}`,
+				},
+			];
 
 			currentAngle += angle;
 		}
@@ -112,15 +122,18 @@ export const buildWheelLayout = (
 		const songPoints = song.points || 1;
 		const angle = (songPoints / totalPoints) * pointsDegreesTotal;
 
-		segments.push({
-			song,
-			startAngle: currentAngle,
-			endAngle: currentAngle + angle,
-			angle,
-			midAngle: currentAngle + angle / 2,
-			isBananaSection: false,
-			segmentId: `points-${song.id}`,
-		});
+		segments = [
+			...segments,
+			{
+				song,
+				startAngle: currentAngle,
+				endAngle: currentAngle + angle,
+				angle,
+				midAngle: currentAngle + angle / 2,
+				isBananaSection: false,
+				segmentId: `points-${song.id}`,
+			},
+		];
 
 		currentAngle += angle;
 	}
@@ -136,11 +149,15 @@ export const buildWheelLayout = (
  * @param randomValueWithinSection - Optional random value for weighted selection within section (testing)
  * @returns The winning song and whether it was from banana section
  */
-export const selectWinner = (
-	songs: WheelSong[],
-	randomValue?: number,
-	randomValueWithinSection?: number,
-): { winner: WheelSong; fromBananaSection: boolean } | null => {
+export const selectWinner = ({
+	songs,
+	randomValue,
+	randomValueWithinSection,
+}: {
+	readonly songs: WheelSong[];
+	readonly randomValue?: number;
+	readonly randomValueWithinSection?: number;
+}): { winner: WheelSong; fromBananaSection: boolean } | null => {
 	if (songs.length === 0) return null;
 
 	const bananaSongs = songs.filter((s) => s.bananaStickers > 0);
@@ -158,16 +175,20 @@ export const selectWinner = (
 
 	if (fromBananaSection) {
 		// Step 2a: Within banana section, pick based on banana count (weighted random)
-		const winner = weightedRandomSelect(
-			bananaSongs,
-			(s) => s.bananaStickers,
-			rand2,
-		);
+		const winner = weightedRandomSelect({
+			items: bananaSongs,
+			getWeight: (song) => song.bananaStickers,
+			randomValue: rand2,
+		});
 		return winner ? { winner, fromBananaSection: true } : null;
 	}
 
 	// Step 2b: Within points section, pick based on points (weighted random, ALL songs)
-	const winner = weightedRandomSelect(songs, (s) => s.points || 1, rand2);
+	const winner = weightedRandomSelect({
+		items: songs,
+		getWeight: (song) => song.points || 1,
+		randomValue: rand2,
+	});
 	return winner ? { winner, fromBananaSection: false } : null;
 };
 
@@ -179,11 +200,15 @@ export const selectWinner = (
  * @param randomValue - Random value between 0 and 1
  * @returns The selected item
  */
-export const weightedRandomSelect = <T>(
-	items: T[],
-	getWeight: (item: T) => number,
-	randomValue: number,
-): T | null => {
+export const weightedRandomSelect = <T>({
+	items,
+	getWeight,
+	randomValue,
+}: {
+	readonly items: T[];
+	readonly getWeight: (item: T) => number;
+	readonly randomValue: number;
+}): T | null => {
 	if (items.length === 0) return null;
 
 	const totalWeight = items.reduce((sum, item) => sum + getWeight(item), 0);
@@ -206,7 +231,13 @@ export const weightedRandomSelect = <T>(
 /**
  * Seeded random shuffle for consistent ordering within a session.
  */
-export const seededShuffle = <T>(array: T[], seed: number): T[] => {
+export const seededShuffle = <T>({
+	array,
+	seed,
+}: {
+	readonly array: T[];
+	readonly seed: number;
+}): T[] => {
 	const shuffled = [...array];
 	let currentIndex = shuffled.length;
 	let currentSeed = seed;

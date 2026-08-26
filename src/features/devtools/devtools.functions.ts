@@ -25,18 +25,23 @@ const getOperation = createServerOnlyFn(
 export const MW_Feature_DevTools = createMiddleware({
 	type: "function",
 }).server(({ next }) => {
-	const runDevTools: RunDevTools =
-		process.env.ENABLE_DEV_TOOLS === "true"
-			? (operation) => operation()
-			: async () => ({
-					_tag: "Failure",
-					error: {
-						_tag: "E__DevToolsDisabled",
-						message: "Dev tools are disabled.",
-					},
-				});
+	const runDevTools = getDevToolsRunner();
 	return next<{ runDevTools: RunDevTools }>({ context: { runDevTools } });
 });
+
+function getDevToolsRunner(): RunDevTools {
+	if (process.env.ENABLE_DEV_TOOLS === "true") {
+		return (operation) => operation();
+	}
+
+	return async () => ({
+		_tag: "Failure",
+		error: {
+			_tag: "E__DevToolsDisabled",
+			message: "Dev tools are disabled.",
+		},
+	});
+}
 
 export const SF_GetDevToolsStatus = SF({ method: "GET" })
 	.middleware([MW_Feature_DevTools, MW_Access_GM])

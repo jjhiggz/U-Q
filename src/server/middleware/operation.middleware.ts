@@ -9,8 +9,7 @@ import type {
 	I__RemoteFailure,
 	RemoteResult,
 } from "@/server/effect/remote-result";
-
-const GM_EMAIL = "jonathan.higger@gmail.com";
+import { F_Policy__IsGM } from "@/server/auth/gm-access.policy";
 
 export interface E__AuthenticationRequired {
 	readonly _tag: "E__AuthenticationRequired";
@@ -92,7 +91,7 @@ export const MW_Access_GM = createMiddleware({ type: "function" }).server(
 			});
 			return next<{ runGM: RunGM }>({ context: { runGM } });
 		}
-		if (session.user.email.toLowerCase() !== GM_EMAIL) {
+		if (!F_Policy__IsGM({ email: session.user.email })) {
 			const runGM: RunGM = async () => ({
 				_tag: "Failure",
 				error: {

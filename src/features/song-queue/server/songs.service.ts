@@ -8,10 +8,9 @@ import type {
 	I__UpdateSongInput,
 } from "../song-queue.schema";
 import { Svc__GMAccess, Svc__Session } from "@/server/auth/session.service";
+import { F_Policy__IsGM } from "@/server/auth/gm-access.policy";
 import { Svc__Database } from "@/server/database/database.service";
 import { E__SongsUnavailable, Svc__SongsRepository } from "./songs.repository";
-
-const GM_EMAIL = "jonathan.higger@gmail.com";
 
 export class E__SongAlreadyQueued extends Data.TaggedError(
 	"E__SongAlreadyQueued",
@@ -78,7 +77,7 @@ export const Layer_Svc__Songs = Layer.effect(
 			submit: (input) =>
 				Effect.gen(function* () {
 					const { session } = yield* Svc__Session;
-					const isGM = session.user.email.toLowerCase() === GM_EMAIL;
+					const isGM = F_Policy__IsGM({ email: session.user.email });
 
 					return yield* database
 						.transaction(
@@ -127,7 +126,7 @@ export const Layer_Svc__Songs = Layer.effect(
 					if (!existing) {
 						return yield* new E__SongNotFound({ message: "Song not found." });
 					}
-					const isGM = session.user.email.toLowerCase() === GM_EMAIL;
+					const isGM = F_Policy__IsGM({ email: session.user.email });
 					if (!isGM && existing.submittedByUserId !== session.user.id) {
 						return yield* new E__SongAccessDenied({
 							message: "You can only edit your own songs.",
@@ -145,7 +144,7 @@ export const Layer_Svc__Songs = Layer.effect(
 					if (!existing) {
 						return yield* new E__SongNotFound({ message: "Song not found." });
 					}
-					const isGM = session.user.email.toLowerCase() === GM_EMAIL;
+					const isGM = F_Policy__IsGM({ email: session.user.email });
 					if (!isGM && existing.submittedByUserId !== session.user.id) {
 						return yield* new E__SongAccessDenied({
 							message: "You can only delete your own songs.",
@@ -181,11 +180,11 @@ export const Layer_Svc__Songs = Layer.effect(
 				}),
 			clear: () => Effect.andThen(Svc__GMAccess, repository.clear()),
 			adjustPoints: ({ id, points }) =>
-				Effect.andThen(Svc__GMAccess, repository.adjustPoints(id, points)),
+				Effect.andThen(Svc__GMAccess, repository.adjustPoints({ id, points })),
 			adjustBananaStickers: ({ id, delta }) =>
 				Effect.andThen(
 					Svc__GMAccess,
-					repository.adjustBananaStickers(id, delta),
+					repository.adjustBananaStickers({ id, delta }),
 				),
 		} satisfies I__SongsService;
 	}),

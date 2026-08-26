@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { authClient } from "@/features/auth/auth-client";
+import { authClient } from "@/lib/auth-client";
 import { serverQueryOptions, useServerMutation } from "@/lib/server-state";
 import type { RemoteResult } from "@/server/effect/remote-result";
 import {

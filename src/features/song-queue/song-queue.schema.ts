@@ -17,36 +17,66 @@ export const S__SubmitSongInput = z
 		facebookUrl: S__OptionalUrl,
 	})
 	.superRefine((input, context) => {
-		validateHost(input.songLink, "songLink", context, {
-			blocked: [
-				"music.apple.com",
-				"itunes.apple.com",
-				"tidal.com",
-				"deezer.com",
-				"amazon.com",
-				"music.amazon.com",
-			],
-			message: "Use a link from a free streaming service.",
+		validateHost({
+			value: input.songLink,
+			path: "songLink",
+			context,
+			rule: {
+				blocked: [
+					"music.apple.com",
+					"itunes.apple.com",
+					"tidal.com",
+					"deezer.com",
+					"amazon.com",
+					"music.amazon.com",
+				],
+				message: "Use a link from a free streaming service.",
+			},
 		});
-		validateHost(input.youtubeUrl, "youtubeUrl", context, {
-			allowed: ["youtube.com", "youtu.be"],
-			message: "Enter a valid YouTube URL.",
+		validateHost({
+			value: input.youtubeUrl,
+			path: "youtubeUrl",
+			context,
+			rule: {
+				allowed: ["youtube.com", "youtu.be"],
+				message: "Enter a valid YouTube URL.",
+			},
 		});
-		validateHost(input.soundcloudUrl, "soundcloudUrl", context, {
-			allowed: ["soundcloud.com"],
-			message: "Enter a valid SoundCloud URL.",
+		validateHost({
+			value: input.soundcloudUrl,
+			path: "soundcloudUrl",
+			context,
+			rule: {
+				allowed: ["soundcloud.com"],
+				message: "Enter a valid SoundCloud URL.",
+			},
 		});
-		validateHost(input.instagramUrl, "instagramUrl", context, {
-			allowed: ["instagram.com", "instagr.am"],
-			message: "Enter a valid Instagram URL.",
+		validateHost({
+			value: input.instagramUrl,
+			path: "instagramUrl",
+			context,
+			rule: {
+				allowed: ["instagram.com", "instagr.am"],
+				message: "Enter a valid Instagram URL.",
+			},
 		});
-		validateHost(input.tiktokUrl, "tiktokUrl", context, {
-			allowed: ["tiktok.com"],
-			message: "Enter a valid TikTok URL.",
+		validateHost({
+			value: input.tiktokUrl,
+			path: "tiktokUrl",
+			context,
+			rule: {
+				allowed: ["tiktok.com"],
+				message: "Enter a valid TikTok URL.",
+			},
 		});
-		validateHost(input.facebookUrl, "facebookUrl", context, {
-			allowed: ["facebook.com", "fb.com", "fb.watch"],
-			message: "Enter a valid Facebook URL.",
+		validateHost({
+			value: input.facebookUrl,
+			path: "facebookUrl",
+			context,
+			rule: {
+				allowed: ["facebook.com", "fb.com", "fb.watch"],
+				message: "Enter a valid Facebook URL.",
+			},
 		});
 	});
 
@@ -72,16 +102,21 @@ export const S__UpdateSongInput = S__SubmitSongInput.safeExtend({
 });
 export type I__UpdateSongInput = z.infer<typeof S__UpdateSongInput>;
 
-function validateHost(
-	value: string | undefined,
-	path: keyof I__SubmitSongInput,
-	context: z.RefinementCtx,
-	rule: {
+function validateHost({
+	value,
+	path,
+	context,
+	rule,
+}: {
+	readonly value: string | undefined;
+	readonly path: keyof I__SubmitSongInput;
+	readonly context: z.RefinementCtx;
+	readonly rule: {
 		readonly allowed?: readonly string[];
 		readonly blocked?: readonly string[];
 		readonly message: string;
-	},
-): void {
+	};
+}): void {
 	if (!value) return;
 
 	const hostname = new URL(value).hostname.toLowerCase();

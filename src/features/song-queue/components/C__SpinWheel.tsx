@@ -1,10 +1,11 @@
+import { match } from "ts-pattern";
 import { useEffect, useState, useMemo } from "react";
 import {
 	buildWheelLayout,
 	selectWinner,
 	type WheelSong,
 	type WheelSegment,
-} from "../lib/wheel-algorithm";
+} from "@/lib/wheel-algorithm";
 
 interface Song {
 	id: number;
@@ -14,7 +15,7 @@ interface Song {
 	bananaStickers: number; // count of banana stickers
 }
 
-interface SpinWheelProps {
+interface I_Props_C__SpinWheel {
 	songs: Song[];
 	isSpinning: boolean;
 	onSpinComplete: (song: Song) => void;
@@ -54,11 +55,11 @@ interface DisplaySegment extends WheelSegment {
 	color: string;
 }
 
-export function SpinWheel({
+export function C__SpinWheel({
 	songs,
 	isSpinning,
 	onSpinComplete,
-}: SpinWheelProps) {
+}: I_Props_C__SpinWheel) {
 	const [rotation, setRotation] = useState(0);
 	const [hasSpun, setHasSpun] = useState(false);
 
@@ -80,7 +81,7 @@ export function SpinWheel({
 	);
 
 	const layout = useMemo(
-		() => buildWheelLayout(wheelSongs, shuffleSeed),
+		() => buildWheelLayout({ songs: wheelSongs, shuffleSeed }),
 		[wheelSongs, shuffleSeed],
 	);
 
@@ -98,102 +99,117 @@ export function SpinWheel({
 	}, [layout.segments]);
 
 	// Handle spin logic
-	useEffect(() => {
-		if (isSpinning && !hasSpun && displaySegments.length > 0) {
-			// Use the algorithm to select a winner
-			const result = selectWinner(wheelSongs);
+	useEffect(
+		/** @imperative */
+		() => {
+			if (isSpinning && !hasSpun && displaySegments.length > 0) {
+				// Use the algorithm to select a winner
+				const result = selectWinner({ songs: wheelSongs });
 
-			if (!result) {
-				console.error("Could not select winner");
-				return;
+				if (!result) {
+					console.error("Could not select winner");
+					return;
+				}
+
+				const { winner, fromBananaSection } = result;
+
+				// Find the winning segment
+				const segmentPrefix = fromBananaSection ? "banana" : "points";
+				const winningSeg = displaySegments.find(
+					(s) => s.segmentId === `${segmentPrefix}-${winner.id}`,
+				);
+
+				if (!winningSeg) {
+					console.error("Could not find winning segment for song:", winner);
+					return;
+				}
+
+				// Calculate rotation to land on this segment
+				// The pointer is at the top (-90 degrees / 270 degrees)
+				// For segment at midAngle θ to be under pointer after rotation R:
+				// θ + R ≡ 270 (mod 360)
+				// R ≡ 270 - θ (mod 360)
+
+				// Calculate the base rotation that aligns this segment with the pointer
+				const baseRotation = 270 - winningSeg.midAngle;
+
+				// Normalize to 0-360
+				const baseNormalized = ((baseRotation % 360) + 360) % 360;
+
+				// Current wheel position (normalized)
+				const currentNormalized = ((rotation % 360) + 360) % 360;
+
+				// How much more do we need to rotate to reach the target?
+				let deltaToTarget = baseNormalized - currentNormalized;
+				if (deltaToTarget <= 0) deltaToTarget += 360;
+
+				// Add full spins for visual effect (must be exact multiple of 360!)
+				const numExtraSpins = Math.floor(5 + Math.random() * 4); // 5-8 full spins
+				const extraSpins = numExtraSpins * 360;
+
+				const finalRotation = rotation + deltaToTarget + extraSpins;
+
+				// Debug log
+				console.log("Spin debug:", {
+					winner: winner.title,
+					midAngle: winningSeg.midAngle,
+					baseRotation,
+					currentNormalized,
+					deltaToTarget,
+					extraSpins,
+					finalRotation,
+					finalMod360: finalRotation % 360,
+					expectedPosition: (winningSeg.midAngle + finalRotation) % 360,
+				});
+
+				setRotation(finalRotation);
+				setHasSpun(true);
+
+				// Find the original song object to return
+				const originalSong = songs.find((s) => s.id === winner.id);
+				if (originalSong) {
+					setTimeout(() => {
+						onSpinComplete(originalSong);
+					}, 4000);
+				}
 			}
-
-			const { winner, fromBananaSection } = result;
-
-			// Find the winning segment
-			const segmentPrefix = fromBananaSection ? "banana" : "points";
-			const winningSeg = displaySegments.find(
-				(s) => s.segmentId === `${segmentPrefix}-${winner.id}`,
-			);
-
-			if (!winningSeg) {
-				console.error("Could not find winning segment for song:", winner);
-				return;
-			}
-
-			// Calculate rotation to land on this segment
-			// The pointer is at the top (-90 degrees / 270 degrees)
-			// For segment at midAngle θ to be under pointer after rotation R:
-			// θ + R ≡ 270 (mod 360)
-			// R ≡ 270 - θ (mod 360)
-
-			// Calculate the base rotation that aligns this segment with the pointer
-			const baseRotation = 270 - winningSeg.midAngle;
-
-			// Normalize to 0-360
-			const baseNormalized = ((baseRotation % 360) + 360) % 360;
-
-			// Current wheel position (normalized)
-			const currentNormalized = ((rotation % 360) + 360) % 360;
-
-			// How much more do we need to rotate to reach the target?
-			let deltaToTarget = baseNormalized - currentNormalized;
-			if (deltaToTarget <= 0) deltaToTarget += 360;
-
-			// Add full spins for visual effect (must be exact multiple of 360!)
-			const numExtraSpins = Math.floor(5 + Math.random() * 4); // 5-8 full spins
-			const extraSpins = numExtraSpins * 360;
-
-			const finalRotation = rotation + deltaToTarget + extraSpins;
-
-			// Debug log
-			console.log("Spin debug:", {
-				winner: winner.title,
-				midAngle: winningSeg.midAngle,
-				baseRotation,
-				currentNormalized,
-				deltaToTarget,
-				extraSpins,
-				finalRotation,
-				finalMod360: finalRotation % 360,
-				expectedPosition: (winningSeg.midAngle + finalRotation) % 360,
-			});
-
-			setRotation(finalRotation);
-			setHasSpun(true);
-
-			// Find the original song object to return
-			const originalSong = songs.find((s) => s.id === winner.id);
-			if (originalSong) {
-				setTimeout(() => {
-					onSpinComplete(originalSong);
-				}, 4000);
-			}
-		}
-	}, [
-		isSpinning,
-		hasSpun,
-		displaySegments,
-		wheelSongs,
-		songs,
-		rotation,
-		onSpinComplete,
-	]);
+		},
+		[
+			isSpinning,
+			hasSpun,
+			displaySegments,
+			wheelSongs,
+			songs,
+			rotation,
+			onSpinComplete,
+		],
+	);
 
 	// Reset spin state
-	useEffect(() => {
-		if (!isSpinning) {
-			setHasSpun(false);
-		}
-	}, [isSpinning]);
+	useEffect(
+		/** @imperative */
+		() => {
+			if (!isSpinning) {
+				setHasSpun(false);
+			}
+		},
+		[isSpinning],
+	);
 
-	const truncateText = (text: string, angle: number) => {
+	/** @imperative */
+	const truncateText = ({ text, angle }: { text: string; angle: number }) => {
 		const maxLength = Math.max(5, Math.floor(angle / 15));
 		if (text.length <= maxLength) return text;
 		return `${text.substring(0, maxLength - 1)}…`;
 	};
 
-	const createSlicePath = (startAngle: number, endAngle: number) => {
+	const createSlicePath = ({
+		startAngle,
+		endAngle,
+	}: {
+		startAngle: number;
+		endAngle: number;
+	}) => {
 		const radius = 150;
 		const cx = 160;
 		const cy = 160;
@@ -211,7 +227,14 @@ export function SpinWheel({
 		return `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
 	};
 
-	const getTextPosition = (midAngle: number, segmentAngle: number) => {
+	/** @imperative */
+	const getTextPosition = ({
+		midAngle,
+		segmentAngle,
+	}: {
+		midAngle: number;
+		segmentAngle: number;
+	}) => {
 		const cx = 160;
 		const cy = 160;
 
@@ -294,13 +317,19 @@ export function SpinWheel({
 
 				{/* Segments */}
 				{displaySegments.map((seg) => {
-					const textPos = getTextPosition(seg.midAngle, seg.angle);
+					const textPos = getTextPosition({
+						midAngle: seg.midAngle,
+						segmentAngle: seg.angle,
+					});
 					const showText = seg.angle > 8;
 
 					return (
 						<g key={seg.segmentId}>
 							<path
-								d={createSlicePath(seg.startAngle, seg.endAngle)}
+								d={createSlicePath({
+									startAngle: seg.startAngle,
+									endAngle: seg.endAngle,
+								})}
 								fill={seg.color}
 								stroke="#fff"
 								strokeWidth="2"
@@ -330,7 +359,7 @@ export function SpinWheel({
 									transform={`rotate(${textPos.rotation}, ${textPos.x}, ${textPos.y})`}
 									className="pointer-events-none select-none"
 								>
-									{truncateText(seg.song.title, seg.angle)}
+									{truncateText({ text: seg.song.title, angle: seg.angle })}
 								</text>
 							)}
 						</g>
@@ -345,23 +374,26 @@ export function SpinWheel({
 
 			{/* Legend */}
 			<div className="mt-4 text-xs text-muted-foreground text-center space-y-1">
-				{layout.hasBananaSection ? (
-					<>
-						<div className="flex items-center justify-center gap-2">
-							<span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-200 rounded text-yellow-800">
-								<img src="/banana sticker.png" alt="🍌" className="w-4 h-4" />{" "}
-								50% - weighted by banana count
-							</span>
-						</div>
-						<div className="flex items-center justify-center gap-2">
-							<span className="px-2 py-0.5 bg-gray-200 rounded text-gray-700">
-								50% - weighted by points (all songs)
-							</span>
-						</div>
-					</>
-				) : (
-					<div>Segment size = probability (weighted by points)</div>
-				)}
+				{match(layout.hasBananaSection)
+					.with(true, () => (
+						<>
+							<div className="flex items-center justify-center gap-2">
+								<span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-200 rounded text-yellow-800">
+									<img src="/banana sticker.png" alt="🍌" className="w-4 h-4" />{" "}
+									50% - weighted by banana count
+								</span>
+							</div>
+							<div className="flex items-center justify-center gap-2">
+								<span className="px-2 py-0.5 bg-gray-200 rounded text-gray-700">
+									50% - weighted by points (all songs)
+								</span>
+							</div>
+						</>
+					))
+					.with(false, () => (
+						<div>Segment size = probability (weighted by points)</div>
+					))
+					.exhaustive()}
 			</div>
 		</div>
 	);

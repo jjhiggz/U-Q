@@ -41,14 +41,14 @@ interface I__SongsRepository {
 		E__SongsUnavailable
 	>;
 	readonly clear: () => Effect.Effect<void, E__SongsUnavailable>;
-	readonly adjustPoints: (
-		id: number,
-		points: number,
-	) => Effect.Effect<void, E__SongsUnavailable>;
-	readonly adjustBananaStickers: (
-		id: number,
-		delta: number,
-	) => Effect.Effect<void, E__SongsUnavailable>;
+	readonly adjustPoints: (input: {
+		readonly id: number;
+		readonly points: number;
+	}) => Effect.Effect<void, E__SongsUnavailable>;
+	readonly adjustBananaStickers: (input: {
+		readonly id: number;
+		readonly delta: number;
+	}) => Effect.Effect<void, E__SongsUnavailable>;
 }
 
 export class Svc__SongsRepository extends Context.Tag("Svc__SongsRepository")<
@@ -178,7 +178,7 @@ export const Layer_Repo__Songs = Layer.effect(
 						fn: (db) => db.delete(songs),
 					})
 					.pipe(Effect.asVoid),
-			adjustPoints: (id, points) =>
+			adjustPoints: ({ id, points }) =>
 				database
 					.query({
 						ErrorClass: E__SongsUnavailable,
@@ -189,7 +189,7 @@ export const Layer_Repo__Songs = Layer.effect(
 								.where(eq(songs.id, id)),
 					})
 					.pipe(Effect.asVoid),
-			adjustBananaStickers: (id, delta) =>
+			adjustBananaStickers: ({ id, delta }) =>
 				database
 					.query({
 						ErrorClass: E__SongsUnavailable,
