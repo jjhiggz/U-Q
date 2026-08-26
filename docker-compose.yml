@@ -1,23 +1,21 @@
-version: '3.8'
+name: ${UQ_COMPOSE_PROJECT:-uq}
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: uq-db
     environment:
       POSTGRES_USER: musicqueue
       POSTGRES_PASSWORD: musicqueue
       POSTGRES_DB: musicqueue
     ports:
-      - "5432:5432"
+      - "${UQ_DB_PORT:-55432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U musicqueue"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
 volumes:
   postgres_data:
-

@@ -1,47 +1,19 @@
-# Docker Database Setup
+# Local PostgreSQL
 
-This Docker Compose file provides a local PostgreSQL database for development.
+The development script scopes each Compose project and volume to the absolute
+worktree path.
 
-## Usage
-
-Start the database:
 ```bash
-docker-compose up -d
+bun run db:up                     # PostgreSQL on 55432
+bun run db:up -dbp 55433          # alternate worktree port
+bun run db:down -dbp 55433
+bun run dev:setup -p 3001 -dbp 55433
 ```
 
-Stop the database:
-```bash
-docker-compose down
-```
+Defaults:
 
-Stop and remove volumes (deletes all data):
-```bash
-docker-compose down -v
-```
+- User/password/database: `musicqueue`
+- URL: `postgresql://musicqueue:musicqueue@localhost:55432/musicqueue`
 
-## Connection
-
-The database is available at:
-- Host: `localhost`
-- Port: `5432`
-- User: `musicqueue`
-- Password: `musicqueue`
-- Database: `musicqueue`
-
-Connection string:
-```
-postgresql://musicqueue:musicqueue@localhost:5432/musicqueue
-```
-
-Add this to your `.env.local` file:
-```
-DATABASE_URL=postgresql://musicqueue:musicqueue@localhost:5432/musicqueue
-```
-
-## Setup Schema
-
-After starting the database, run:
-```bash
-npm run db:push
-```
-
+`dev:setup` starts PostgreSQL, waits for health, runs Drizzle migrations, and
+starts TanStack Start. `dev` starts only the app process.

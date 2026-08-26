@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: musicqueue
+          POSTGRES_PASSWORD: musicqueue
+          POSTGRES_DB: musicqueue
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U musicqueue"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://musicqueue:musicqueue@localhost:55432/musicqueue
+      BETTER_AUTH_SECRET: ci-only-better-auth-secret-at-least-32-characters
+      BETTER_AUTH_URL: http://127.0.0.1:3000
+      ENABLE_DEV_TOOLS: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run format:check
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run db:migrate
+      - run: bun run test:integration
+      - run: bun run build
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:e2e
