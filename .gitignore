@@ -9,6 +9,8 @@ count.txt
 .tanstack
 .wrangler
 .output
+playwright-report
+test-results
 .vinxi
 .vercel
 todos.json

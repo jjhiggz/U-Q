@@ -1,0 +1,1 @@
+Feature UI uses declarative state classification. Imperative event boundaries must opt in explicitly.

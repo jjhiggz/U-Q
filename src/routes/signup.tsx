@@ -1,14 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { SignUp } from '@clerk/clerk-react'
+import { createFileRoute } from "@tanstack/react-router";
+import { C_Page__Signup } from "@/features/authentication/signup.page";
 
-export const Route = createFileRoute('/signup')({
-  component: SignupPage,
-})
-
-function SignupPage() {
-  return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-4">
-      <SignUp routing="path" path="/signup" signInUrl="/login" />
-    </div>
-  )
-}
+export const Route = createFileRoute("/signup")({
+	component: C_Page__Signup,
+});
