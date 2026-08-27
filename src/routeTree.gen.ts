@@ -10,15 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as QueuesRouteImport } from './routes/queues'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DevtoolsRouteImport } from './routes/devtools'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as QHandleRouteImport } from './routes/q/$handle'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QueuesRoute = QueuesRouteImport.update({
+  id: '/queues',
+  path: '/queues',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -41,6 +48,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QHandleRoute = QHandleRouteImport.update({
+  id: '/q/$handle',
+  path: '/q/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -52,7 +64,9 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/devtools': typeof DevtoolsRoute
   '/login': typeof LoginRoute
+  '/queues': typeof QueuesRoute
   '/signup': typeof SignupRoute
+  '/q/$handle': typeof QHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
@@ -60,7 +74,9 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/devtools': typeof DevtoolsRoute
   '/login': typeof LoginRoute
+  '/queues': typeof QueuesRoute
   '/signup': typeof SignupRoute
+  '/q/$handle': typeof QHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
@@ -69,21 +85,41 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/devtools': typeof DevtoolsRoute
   '/login': typeof LoginRoute
+  '/queues': typeof QueuesRoute
   '/signup': typeof SignupRoute
+  '/q/$handle': typeof QHandleRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/devtools' | '/login' | '/signup' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/devtools'
+    | '/login'
+    | '/queues'
+    | '/signup'
+    | '/q/$handle'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/devtools' | '/login' | '/signup' | '/api/auth/$'
+  to:
+    | '/'
+    | '/admin'
+    | '/devtools'
+    | '/login'
+    | '/queues'
+    | '/signup'
+    | '/q/$handle'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/devtools'
     | '/login'
+    | '/queues'
     | '/signup'
+    | '/q/$handle'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
@@ -92,7 +128,9 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   DevtoolsRoute: typeof DevtoolsRoute
   LoginRoute: typeof LoginRoute
+  QueuesRoute: typeof QueuesRoute
   SignupRoute: typeof SignupRoute
+  QHandleRoute: typeof QHandleRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -103,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/queues': {
+      id: '/queues'
+      path: '/queues'
+      fullPath: '/queues'
+      preLoaderRoute: typeof QueuesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -133,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/q/$handle': {
+      id: '/q/$handle'
+      path: '/q/$handle'
+      fullPath: '/q/$handle'
+      preLoaderRoute: typeof QHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -148,7 +200,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   DevtoolsRoute: DevtoolsRoute,
   LoginRoute: LoginRoute,
+  QueuesRoute: QueuesRoute,
   SignupRoute: SignupRoute,
+  QHandleRoute: QHandleRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

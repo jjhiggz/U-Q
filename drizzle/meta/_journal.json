@@ -64,6 +64,13 @@
       "when": 1787751810156,
       "tag": "0008_loving_agent_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787782263450,
+      "tag": "0009_safe_patriot",
+      "breakpoints": true
     }
   ]
 }

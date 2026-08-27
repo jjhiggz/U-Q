@@ -5,6 +5,7 @@ import type {
 	Svc__Session,
 } from "@/server/auth/session.service";
 import type { Svc__Songs } from "@/features/song-queue/server/songs.service";
+import type { Svc__LiveQueues } from "@/features/song-queue/server/live-queues.service";
 import type {
 	I__RemoteFailure,
 	RemoteResult,
@@ -22,11 +23,15 @@ export interface E__GMAccessRequired {
 }
 
 type RunSession = <A, E extends I__RemoteFailure>(
-	operation: Effect.Effect<A, E, Svc__Session | Svc__Songs>,
+	operation: Effect.Effect<A, E, Svc__Session | Svc__Songs | Svc__LiveQueues>,
 ) => Promise<RemoteResult<A, E | E__AuthenticationRequired>>;
 
 type RunGM = <A, E extends I__RemoteFailure>(
-	operation: Effect.Effect<A, E, Svc__GMAccess | Svc__Session | Svc__Songs>,
+	operation: Effect.Effect<
+		A,
+		E,
+		Svc__GMAccess | Svc__Session | Svc__Songs | Svc__LiveQueues
+	>,
 ) => Promise<
 	RemoteResult<A, E | E__AuthenticationRequired | E__GMAccessRequired>
 >;

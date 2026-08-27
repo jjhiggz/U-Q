@@ -5,7 +5,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { songs } from "@/db/schema";
+import { songs, submissions } from "@/db/schema";
 import * as authSchema from "./auth.table";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -23,7 +23,9 @@ const pool = new Pool({
 	connectionString: databaseUrl,
 	max: 2,
 });
-const authDatabase = drizzle(pool, { schema: authSchema });
+const authDatabase = drizzle(pool, {
+	schema: { ...authSchema, songs, submissions },
+});
 
 export const auth = betterAuth({
 	database: drizzleAdapter(authDatabase, {
@@ -39,13 +41,21 @@ export const auth = betterAuth({
 		anonymous({
 			disableDeleteAnonymousUser: true,
 			onLinkAccount: async ({ anonymousUser, newUser }) => {
-				await authDatabase
-					.update(songs)
-					.set({
-						submittedByUserId: newUser.user.id,
-						submitterId: newUser.user.id,
-					})
-					.where(eq(songs.submittedByUserId, anonymousUser.user.id));
+				await Promise.all([
+					authDatabase
+						.update(songs)
+						.set({
+							submittedByUserId: newUser.user.id,
+							submitterId: newUser.user.id,
+						})
+						.where(eq(songs.submittedByUserId, anonymousUser.user.id)),
+					authDatabase
+						.update(submissions)
+						.set({
+							submitterUserId: newUser.user.id,
+						})
+						.where(eq(submissions.submitterUserId, anonymousUser.user.id)),
+				]);
 			},
 		}),
 		tanstackStartCookies(),
