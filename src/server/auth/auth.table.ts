@@ -1,10 +1,19 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+	boolean,
+	index,
+	pgTable,
+	text,
+	timestamp,
+	uuid,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
 	id: text("id").primaryKey(),
 	name: text("name").notNull(),
 	email: text("email").notNull().unique(),
+	handle: text("handle").unique(),
+	activeQueueId: uuid("active_queue_id"),
 	emailVerified: boolean("email_verified").default(false).notNull(),
 	image: text("image"),
 	isAnonymous: boolean("is_anonymous").default(false).notNull(),

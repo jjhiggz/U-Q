@@ -11,14 +11,24 @@ import {
 	Layer_Svc__Songs,
 	Svc__Songs,
 } from "@/features/song-queue/server/songs.service";
+import { Layer_Repo__Queues } from "@/features/song-queue/server/queues.repository";
+import {
+	Layer_Svc__Queues,
+	Svc__Queues,
+} from "@/features/song-queue/server/queues.service";
 
-const Layer__Application = Layer_Svc__Songs.pipe(
+const Layer__Songs = Layer_Svc__Songs.pipe(
 	Layer.provide(Layer_Repo__Songs),
 	Layer.provide(Layer__Database),
 );
+const Layer__Queues = Layer_Svc__Queues.pipe(
+	Layer.provide(Layer_Repo__Queues),
+	Layer.provide(Layer__Database),
+);
+const Layer__Application = Layer.mergeAll(Layer__Songs, Layer__Queues);
 const runtime = ManagedRuntime.make(Layer__Application);
 
-type AppServices = Svc__Songs;
+type AppServices = Svc__Songs | Svc__Queues;
 
 export async function runOperation<A, E extends I__RemoteFailure>(
 	operation: Effect.Effect<A, E, AppServices>,

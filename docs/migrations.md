@@ -9,7 +9,7 @@ When you make changes to the database schema (`src/db/schema.ts`), follow these 
 ### 1. Generate migration files
 
 ```bash
-npm run db:generate
+bun run db:generate
 ```
 
 This compares your schema to the existing migrations and generates new SQL migration files in the `drizzle/` folder.
@@ -17,17 +17,41 @@ This compares your schema to the existing migrations and generates new SQL migra
 ### 2. Apply migrations
 
 ```bash
-npm run db:migrate
+bun run db:migrate
 ```
 
 This runs `drizzle-kit migrate` to apply pending migrations to your database.
 
+### 3. Check the migration journal
+
+```bash
+bun run db:migrations:check
+```
+
+This verifies that `drizzle.__drizzle_migrations` exists and has one applied
+entry for each migration in `drizzle/meta/_journal.json`.
+
+## CI Checks
+
+CI runs:
+
+```bash
+bun run db:migrations:verify
+bun run db:migrate
+bun run db:migrations:check
+```
+
+`db:migrations:verify` regenerates migrations and fails if `drizzle/` changes,
+which catches schema edits that forgot to commit their generated migration.
+`db:migrations:check` verifies the applied database has a Drizzle migration
+journal entry for every committed migration.
+
 ## Other Useful Commands
 
-- `npm run db:push` - Push schema changes directly (useful for development, skips migration files)
-- `npm run db:pull` - Pull schema from existing database
-- `npm run db:studio` - Open Drizzle Studio to browse your database
-- `npm run db:seed` - Seed the database with sample data
+- `bun run db:push` - Push schema changes directly (useful for development, skips migration files)
+- `bun run db:pull` - Pull schema from existing database
+- `bun run db:studio` - Open Drizzle Studio to browse your database
+- `bun run db:seed` - Seed the local GM account
 
 ## Production Deployments
 

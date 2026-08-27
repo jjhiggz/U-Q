@@ -37,14 +37,37 @@ bun run dev:setup -p 3001 -dbp 55433
 `bun run dev -p 3001 -dbp 55433` starts only TanStack Start. `bun run db:up`
 and `bun run db:down` manage the worktree-scoped database.
 
-Seed the local GM account after the database is running:
+When local dev gets wedged across multiple worktrees or ports, use the all-stop
+commands:
 
 ```bash
-bun run db:seed:admin
+bun run dev:down:all  # stop script-started Vite dev servers and labeled UQ DB containers
+bun run db:down:all   # stop labeled UQ DB containers only
 ```
 
-The GM email is `jonathan.higger@gmail.com`; its local password comes from
-`ADMIN_PASSWORD` and is never committed.
+`dev:setup` also seeds the local GM account. To seed it manually after the
+database is running:
+
+```bash
+bun run db:seed
+```
+
+The default local GM login is `jonathan.higger@gmail.com` / `password123`, with
+handle `sweatynready6969`. Use `bun run db:seed:admin` with `ADMIN_PASSWORD`
+and `ADMIN_HANDLE` when you want custom local credentials.
+
+Legacy fake song data is still available when needed:
+
+```bash
+bun run db:seed:songs -- --count=100 --archived=5
+```
+
+To clear local app/auth data without dropping the database or Drizzle migration
+journal:
+
+```bash
+bun run db:clear
+```
 
 ## Architecture
 

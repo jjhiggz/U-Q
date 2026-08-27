@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { C__PasswordInput } from "./C__PasswordInput";
 
 export function C__Login() {
 	const navigate = useNavigate();
@@ -42,8 +43,7 @@ export function C__Login() {
 							placeholder="Email"
 							required
 						/>
-						<Input
-							type="password"
+						<C__PasswordInput
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							placeholder="Password"

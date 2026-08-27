@@ -3,6 +3,9 @@ name: ${UQ_COMPOSE_PROJECT:-uq}
 services:
   postgres:
     image: postgres:16-alpine
+    labels:
+      com.uq.app: "true"
+      com.uq.service: "postgres"
     environment:
       POSTGRES_USER: musicqueue
       POSTGRES_PASSWORD: musicqueue
