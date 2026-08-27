@@ -13,9 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import {
-	useCreateMusicQueue,
-	useOwnedQueues,
-	useSetActiveQueue,
+	useCreateMusicLiveQueue,
+	useOwnedLiveQueues,
+	useSetActiveLiveQueue,
 } from "../queue.queries";
 
 export function C__QueuesDashboard() {
@@ -23,9 +23,9 @@ export function C__QueuesDashboard() {
 		authClient.useSession();
 	const navigate = useNavigate();
 	const [queueName, setQueueName] = useState("");
-	const ownedQueues = useOwnedQueues();
-	const createQueue = useCreateMusicQueue();
-	const setActiveQueue = useSetActiveQueue();
+	const ownedQueues = useOwnedLiveQueues();
+	const createQueue = useCreateMusicLiveQueue();
+	const setActiveLiveQueue = useSetActiveLiveQueue();
 
 	const handleCreateQueue = (event: React.FormEvent) => {
 		event.preventDefault();
@@ -101,8 +101,8 @@ export function C__QueuesDashboard() {
 							.with({ isLoading: true }, () => (
 								<CenteredMessage label="Loading queues..." />
 							))
-							.otherwise(({ data: queues = [] }) =>
-								match(queues.length)
+							.otherwise(({ data: liveQueues = [] }) =>
+								match(liveQueues.length)
 									.with(0, () => (
 										<div className="text-center py-8 text-muted-foreground">
 											No queues yet.
@@ -110,7 +110,7 @@ export function C__QueuesDashboard() {
 									))
 									.otherwise(() => (
 										<div className="space-y-3">
-											{queues.map((queue) => (
+											{liveQueues.map((queue) => (
 												<div
 													key={queue.id}
 													className="flex items-center justify-between gap-4 rounded-lg border p-4"
@@ -127,15 +127,17 @@ export function C__QueuesDashboard() {
 															)}
 														</div>
 														<div className="text-sm text-muted-foreground">
-															{queue.queueType} · {queue.visibility}
+															{queue.liveQueueType} · {queue.visibility}
 														</div>
 													</div>
 													<Button
 														variant="outline"
 														size="sm"
-														disabled={setActiveQueue.isPending}
+														disabled={setActiveLiveQueue.isPending}
 														onClick={() =>
-															setActiveQueue.mutate({ queueId: queue.id })
+															setActiveLiveQueue.mutate({
+																liveQueueId: queue.id,
+															})
 														}
 													>
 														<Radio className="size-4" />

@@ -1,101 +1,104 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { serverQueryOptions, useServerMutation } from "@/lib/server-state";
-import type { Queue } from "@/db/schema";
+import type { LiveQueue } from "@/db/schema";
 import type { RemoteResult } from "@/server/effect/remote-result";
-import type { I__CreateMusicQueueInput, I__QueueIdInput } from "./queue.schema";
+import type {
+	I__CreateMusicLiveQueueInput,
+	I__LiveQueueIdInput,
+} from "./queue.schema";
 import {
-	SF_ClearActiveQueue,
-	SF_CreateMusicQueue,
-	SF_GetActivePublicQueue,
-	SF_ListOwnedQueues,
-	SF_SetActiveQueue,
+	SF_ClearActiveLiveQueue,
+	SF_CreateMusicLiveQueue,
+	SF_GetActivePublicLiveQueue,
+	SF_ListOwnedLiveQueues,
+	SF_SetActiveLiveQueue,
 } from "./queue.functions";
 import type {
-	E__ChangeQueue,
-	E__CreateQueue,
-	E__ListQueues,
-	E__ReadQueue,
-} from "./server/queues.service";
+	E__ChangeLiveQueue,
+	E__CreateLiveQueue,
+	E__ListLiveQueues,
+	E__ReadLiveQueue,
+} from "./server/live-queues.service";
 import type { E__AuthenticationRequired } from "@/server/middleware/operation.middleware";
 
-export const QK__OwnedQueues = ["queues", "owned"] as const;
-export const QK__ActivePublicQueue = (handle: string) =>
-	["queues", "public", handle] as const;
+export const QK__OwnedLiveQueues = ["liveQueues", "owned"] as const;
+export const QK__ActivePublicLiveQueue = (handle: string) =>
+	["liveQueues", "public", handle] as const;
 
-export const QO__OwnedQueues = () =>
+export const QO__OwnedLiveQueues = () =>
 	serverQueryOptions<
-		readonly Queue[],
-		E__ListQueues | E__AuthenticationRequired
+		readonly LiveQueue[],
+		E__ListLiveQueues | E__AuthenticationRequired
 	>({
-		queryKey: QK__OwnedQueues,
-		queryFn: () => SF_ListOwnedQueues(),
+		queryKey: QK__OwnedLiveQueues,
+		queryFn: () => SF_ListOwnedLiveQueues(),
 	});
 
-export function useOwnedQueues() {
-	return useQuery(QO__OwnedQueues());
+export function useOwnedLiveQueues() {
+	return useQuery(QO__OwnedLiveQueues());
 }
 
-export const QO__ActivePublicQueue = (handle: string) =>
-	serverQueryOptions<Queue, E__ReadQueue>({
-		queryKey: QK__ActivePublicQueue(handle),
-		queryFn: () => SF_GetActivePublicQueue({ data: { handle } }),
+export const QO__ActivePublicLiveQueue = (handle: string) =>
+	serverQueryOptions<LiveQueue, E__ReadLiveQueue>({
+		queryKey: QK__ActivePublicLiveQueue(handle),
+		queryFn: () => SF_GetActivePublicLiveQueue({ data: { handle } }),
 		refetchInterval: 5_000,
 		retry: false,
 	});
 
-export function useActivePublicQueue(handle: string) {
-	return useQuery(QO__ActivePublicQueue(handle));
+export function useActivePublicLiveQueue(handle: string) {
+	return useQuery(QO__ActivePublicLiveQueue(handle));
 }
 
-export function useCreateMusicQueue() {
+export function useCreateMusicLiveQueue() {
 	const queryClient = useQueryClient();
 	return useServerMutation<
-		I__CreateMusicQueueInput,
-		Queue,
-		E__CreateQueue | E__AuthenticationRequired
+		I__CreateMusicLiveQueueInput,
+		LiveQueue,
+		E__CreateLiveQueue | E__AuthenticationRequired
 	>({
 		mutationFn: (
 			input,
 		): Promise<
-			RemoteResult<Queue, E__CreateQueue | E__AuthenticationRequired>
-		> => SF_CreateMusicQueue({ data: input }),
+			RemoteResult<LiveQueue, E__CreateLiveQueue | E__AuthenticationRequired>
+		> => SF_CreateMusicLiveQueue({ data: input }),
 		options: {
 			onSuccess: () =>
-				queryClient.invalidateQueries({ queryKey: QK__OwnedQueues }),
+				queryClient.invalidateQueries({ queryKey: QK__OwnedLiveQueues }),
 		},
 	});
 }
 
-export function useSetActiveQueue() {
+export function useSetActiveLiveQueue() {
 	const queryClient = useQueryClient();
 	return useServerMutation<
-		I__QueueIdInput,
-		Queue,
-		E__ChangeQueue | E__AuthenticationRequired
+		I__LiveQueueIdInput,
+		LiveQueue,
+		E__ChangeLiveQueue | E__AuthenticationRequired
 	>({
 		mutationFn: (
 			input,
 		): Promise<
-			RemoteResult<Queue, E__ChangeQueue | E__AuthenticationRequired>
-		> => SF_SetActiveQueue({ data: input }),
+			RemoteResult<LiveQueue, E__ChangeLiveQueue | E__AuthenticationRequired>
+		> => SF_SetActiveLiveQueue({ data: input }),
 		options: {
 			onSuccess: () =>
-				queryClient.invalidateQueries({ queryKey: QK__OwnedQueues }),
+				queryClient.invalidateQueries({ queryKey: QK__OwnedLiveQueues }),
 		},
 	});
 }
 
-export function useClearActiveQueue() {
+export function useClearActiveLiveQueue() {
 	const queryClient = useQueryClient();
 	return useServerMutation<
 		void,
 		void,
-		E__ChangeQueue | E__AuthenticationRequired
+		E__ChangeLiveQueue | E__AuthenticationRequired
 	>({
-		mutationFn: () => SF_ClearActiveQueue(),
+		mutationFn: () => SF_ClearActiveLiveQueue(),
 		options: {
 			onSuccess: () =>
-				queryClient.invalidateQueries({ queryKey: QK__OwnedQueues }),
+				queryClient.invalidateQueries({ queryKey: QK__OwnedLiveQueues }),
 		},
 	});
 }

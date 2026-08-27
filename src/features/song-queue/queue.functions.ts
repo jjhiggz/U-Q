@@ -1,7 +1,7 @@
 import {
-	S__CreateMusicQueueInput,
-	S__QueueHandleInput,
-	S__QueueIdInput,
+	S__CreateMusicLiveQueueInput,
+	S__LiveQueueHandleInput,
+	S__LiveQueueIdInput,
 } from "./queue.schema";
 import {
 	MW_Access_Session,
@@ -13,42 +13,44 @@ import {
 } from "@tanstack/react-start";
 
 const operations = createServerOnlyFn(
-	() => import("./server/queues.operations"),
+	() => import("./server/live-queues.operations"),
 );
 
-export const SF_ListOwnedQueues = SF({ method: "GET" })
+export const SF_ListOwnedLiveQueues = SF({ method: "GET" })
 	.middleware([MW_Access_Session])
 	.handler(async ({ context }) =>
-		context.runSession((await operations()).listOwnedQueuesOperation()),
+		context.runSession((await operations()).listOwnedLiveQueuesOperation()),
 	);
 
-export const SF_CreateMusicQueue = SF({ method: "POST" })
+export const SF_CreateMusicLiveQueue = SF({ method: "POST" })
 	.middleware([MW_Access_Session])
-	.validator(S__CreateMusicQueueInput)
-	.handler(async ({ data, context }) =>
-		context.runSession((await operations()).createMusicQueueOperation(data)),
-	);
-
-export const SF_GetActivePublicQueue = SF({ method: "GET" })
-	.middleware([MW_Operation_Public])
-	.validator(S__QueueHandleInput)
-	.handler(async ({ data, context }) =>
-		context.run(
-			(await operations()).getActivePublicQueueOperation(data.handle),
-		),
-	);
-
-export const SF_SetActiveQueue = SF({ method: "POST" })
-	.middleware([MW_Access_Session])
-	.validator(S__QueueIdInput)
+	.validator(S__CreateMusicLiveQueueInput)
 	.handler(async ({ data, context }) =>
 		context.runSession(
-			(await operations()).setActiveQueueOperation(data.queueId),
+			(await operations()).createMusicLiveQueueOperation(data),
 		),
 	);
 
-export const SF_ClearActiveQueue = SF({ method: "POST" })
+export const SF_GetActivePublicLiveQueue = SF({ method: "GET" })
+	.middleware([MW_Operation_Public])
+	.validator(S__LiveQueueHandleInput)
+	.handler(async ({ data, context }) =>
+		context.run(
+			(await operations()).getActivePublicLiveQueueOperation(data.handle),
+		),
+	);
+
+export const SF_SetActiveLiveQueue = SF({ method: "POST" })
+	.middleware([MW_Access_Session])
+	.validator(S__LiveQueueIdInput)
+	.handler(async ({ data, context }) =>
+		context.runSession(
+			(await operations()).setActiveLiveQueueOperation(data.liveQueueId),
+		),
+	);
+
+export const SF_ClearActiveLiveQueue = SF({ method: "POST" })
 	.middleware([MW_Access_Session])
 	.handler(async ({ context }) =>
-		context.runSession((await operations()).clearActiveQueueOperation()),
+		context.runSession((await operations()).clearActiveLiveQueueOperation()),
 	);

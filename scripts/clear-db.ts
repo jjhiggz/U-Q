@@ -29,7 +29,7 @@ try {
 		truncate table
 			"account",
 			"music_submission_data",
-			"queues",
+			"live_queues",
 			"session",
 			"songs",
 			"submissions",

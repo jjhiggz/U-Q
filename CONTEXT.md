@@ -4,16 +4,17 @@ UQ helps people host song-review queues and lets submitters quickly send songs w
 
 ## Language
 
-**Queue**:
+**LiveQueue**:
 A hosted submission space owned by a user where other users can send items for consideration. A user may own multiple queues.
-_Avoid_: Room, channel, playlist
+In UI copy, call this a "queue" unless the distinction from a backend queue data structure matters.
+_Avoid_: Room, channel, playlist, generic Queue entity
 
 **Queue Name**:
-An owner-facing label used to distinguish a user's queues from each other.
+An owner-facing label used to distinguish a user's LiveQueues from each other.
 _Avoid_: Queue slug, public title
 
 **Queue Owner**:
-The user who created and manages a queue.
+The user who created and manages a LiveQueue.
 _Avoid_: Admin, GM, moderator
 
 **Handle**:
@@ -21,19 +22,19 @@ A user's unique public identifier used in queue URLs.
 _Avoid_: Username, slug, display name
 
 **Active Queue**:
-The one queue a queue owner is currently running for public visitors and submissions.
+The one LiveQueue a queue owner is currently running for public visitors and submissions.
 _Avoid_: Current room, live playlist, selected queue
 
 **Queue Type**:
-The kind of activity a queue supports, such as music submissions, debate prompts, or audience subject voting.
+The kind of activity a LiveQueue supports, such as music submissions, debate prompts, or audience subject voting.
 _Avoid_: Category, mode, template
 
 **Queue Visibility**:
-The audience that may find or access a queue.
+The audience that may find or access a LiveQueue.
 _Avoid_: Privacy, sharing mode
 
 **Queue Configuration**:
-The type-specific rules and defaults that determine how a queue behaves.
+The type-specific rules and defaults that determine how a LiveQueue behaves.
 _Avoid_: Settings, options, preferences
 
 **Guest Submission**:
@@ -45,7 +46,7 @@ A guest submission that becomes associated with a durable user account after the
 _Avoid_: Migrated submission, converted entry
 
 **Submission**:
-An item sent by a user into a queue for consideration.
+An item sent by a user into a LiveQueue for consideration.
 _Avoid_: Entry, request, post
 
 **Active Submission**:

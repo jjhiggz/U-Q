@@ -1,9 +1,139 @@
 {
-  "id": "dded4b5f-3e2e-4276-931a-f69df201234f",
+  "id": "f159eeba-17d5-49e4-98ac-b2f4b5d77da5",
   "prevId": "45f850aa-6060-4840-bd02-8e328a075de8",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.live_queues": {
+      "name": "live_queues",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_user_id": {
+          "name": "owner_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "live_queue_type": {
+          "name": "live_queue_type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'music'"
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'private'"
+        },
+        "current_submission_id": {
+          "name": "current_submission_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "initial_points": {
+          "name": "initial_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "points_increment_on_archive": {
+          "name": "points_increment_on_archive",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "banana_boosts_enabled": {
+          "name": "banana_boosts_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "authenticated_submission_limit": {
+          "name": "authenticated_submission_limit",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "live_queues_owner_name_unique": {
+          "name": "live_queues_owner_name_unique",
+          "columns": [
+            {
+              "expression": "owner_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "live_queues_owner_user_id_user_id_fk": {
+          "name": "live_queues_owner_user_id_user_id_fk",
+          "tableFrom": "live_queues",
+          "tableTo": "user",
+          "columnsFrom": [
+            "owner_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.music_submission_data": {
       "name": "music_submission_data",
       "schema": "",
@@ -95,136 +225,6 @@
           "tableTo": "submissions",
           "columnsFrom": [
             "submission_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.queues": {
-      "name": "queues",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "owner_user_id": {
-          "name": "owner_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(120)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "queue_type": {
-          "name": "queue_type",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'music'"
-        },
-        "visibility": {
-          "name": "visibility",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'private'"
-        },
-        "current_submission_id": {
-          "name": "current_submission_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "initial_points": {
-          "name": "initial_points",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "points_increment_on_archive": {
-          "name": "points_increment_on_archive",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "banana_boosts_enabled": {
-          "name": "banana_boosts_enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "authenticated_submission_limit": {
-          "name": "authenticated_submission_limit",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "queues_owner_name_unique": {
-          "name": "queues_owner_name_unique",
-          "columns": [
-            {
-              "expression": "owner_user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "queues_owner_user_id_user_id_fk": {
-          "name": "queues_owner_user_id_user_id_fk",
-          "tableFrom": "queues",
-          "tableTo": "user",
-          "columnsFrom": [
-            "owner_user_id"
           ],
           "columnsTo": [
             "id"
@@ -400,8 +400,8 @@
           "primaryKey": true,
           "notNull": true
         },
-        "queue_id": {
-          "name": "queue_id",
+        "live_queue_id": {
+          "name": "live_queue_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -449,12 +449,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "submissions_queue_id_queues_id_fk": {
-          "name": "submissions_queue_id_queues_id_fk",
+        "submissions_live_queue_id_live_queues_id_fk": {
+          "name": "submissions_live_queue_id_live_queues_id_fk",
           "tableFrom": "submissions",
-          "tableTo": "queues",
+          "tableTo": "live_queues",
           "columnsFrom": [
-            "queue_id"
+            "live_queue_id"
           ],
           "columnsTo": [
             "id"
@@ -822,8 +822,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "active_queue_id": {
-          "name": "active_queue_id",
+        "active_live_queue_id": {
+          "name": "active_live_queue_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false

@@ -1,14 +1,14 @@
 import { match } from "ts-pattern";
 import { Music, Radio } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useActivePublicQueue } from "../queue.queries";
+import { useActivePublicLiveQueue } from "../queue.queries";
 
 interface I_Props_C__PublicQueue {
 	readonly handle: string;
 }
 
 export function C__PublicQueue({ handle }: I_Props_C__PublicQueue) {
-	const activeQueue = useActivePublicQueue(handle);
+	const activeQueue = useActivePublicLiveQueue(handle);
 
 	return (
 		<div className="min-h-[calc(100vh-80px)] p-4 max-w-4xl mx-auto">
@@ -52,7 +52,7 @@ export function C__PublicQueue({ handle }: I_Props_C__PublicQueue) {
 									<CardContent className="space-y-2">
 										<div className="text-sm text-muted-foreground">
 											This public link is currently pointed at a{" "}
-											{queue.queueType} queue.
+											{queue.liveQueueType} queue.
 										</div>
 										<div className="text-xs text-muted-foreground">
 											Music submissions will be wired into this queue next.

@@ -11,15 +11,17 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "@/server/auth/auth.table";
 
-export const queues = pgTable(
-	"queues",
+export const liveQueues = pgTable(
+	"live_queues",
 	{
 		id: uuid("id").defaultRandom().primaryKey(),
 		ownerUserId: text("owner_user_id")
 			.notNull()
 			.references(() => user.id, { onDelete: "cascade" }),
 		name: varchar("name", { length: 120 }).notNull(),
-		queueType: varchar("queue_type", { length: 50 }).default("music").notNull(),
+		liveQueueType: varchar("live_queue_type", { length: 50 })
+			.default("music")
+			.notNull(),
 		visibility: varchar("visibility", { length: 50 })
 			.default("private")
 			.notNull(),
@@ -38,7 +40,10 @@ export const queues = pgTable(
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
 	(table) => [
-		uniqueIndex("queues_owner_name_unique").on(table.ownerUserId, table.name),
+		uniqueIndex("live_queues_owner_name_unique").on(
+			table.ownerUserId,
+			table.name,
+		),
 	],
 );
 
@@ -59,9 +64,9 @@ export const submitterProfiles = pgTable("submitter_profiles", {
 
 export const submissions = pgTable("submissions", {
 	id: serial("id").primaryKey(),
-	queueId: uuid("queue_id")
+	liveQueueId: uuid("live_queue_id")
 		.notNull()
-		.references(() => queues.id, { onDelete: "cascade" }),
+		.references(() => liveQueues.id, { onDelete: "cascade" }),
 	submitterUserId: text("submitter_user_id").references(() => user.id, {
 		onDelete: "set null",
 	}),
@@ -92,8 +97,8 @@ export const musicSubmissionData = pgTable("music_submission_data", {
 	spotifyUrl: varchar("spotify_url", { length: 500 }),
 });
 
-export type Queue = typeof queues.$inferSelect;
-export type NewQueue = typeof queues.$inferInsert;
+export type LiveQueue = typeof liveQueues.$inferSelect;
+export type NewLiveQueue = typeof liveQueues.$inferInsert;
 export type Submission = typeof submissions.$inferSelect;
 export type NewSubmission = typeof submissions.$inferInsert;
 export type MusicSubmissionData = typeof musicSubmissionData.$inferSelect;
@@ -101,9 +106,9 @@ export type NewMusicSubmissionData = typeof musicSubmissionData.$inferInsert;
 export type SubmitterProfile = typeof submitterProfiles.$inferSelect;
 export type NewSubmitterProfile = typeof submitterProfiles.$inferInsert;
 
-export interface MusicQueueItem {
+export interface MusicLiveQueueItem {
 	readonly id: number;
-	readonly queueId: string;
+	readonly liveQueueId: string;
 	readonly title: string;
 	readonly artist: string;
 	readonly nameInChat: string | null;

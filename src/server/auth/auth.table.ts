@@ -13,7 +13,7 @@ export const user = pgTable("user", {
 	name: text("name").notNull(),
 	email: text("email").notNull().unique(),
 	handle: text("handle").unique(),
-	activeQueueId: uuid("active_queue_id"),
+	activeLiveQueueId: uuid("active_live_queue_id"),
 	emailVerified: boolean("email_verified").default(false).notNull(),
 	image: text("image"),
 	isAnonymous: boolean("is_anonymous").default(false).notNull(),
