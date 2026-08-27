@@ -15,11 +15,13 @@ export function serverQueryOptions<A, E extends I__RemoteFailure>(args: {
 	readonly queryKey: QueryKey;
 	readonly queryFn: () => Promise<RemoteResult<A, E>>;
 	readonly refetchInterval?: number;
+	readonly retry?: boolean;
 }) {
 	return queryOptions({
 		queryKey: args.queryKey,
 		queryFn: async () => unwrapRemoteResult(await args.queryFn()),
 		refetchInterval: args.refetchInterval,
+		retry: args.retry,
 	});
 }
 

@@ -40,6 +40,7 @@ export const QO__ActivePublicQueue = (handle: string) =>
 		queryKey: QK__ActivePublicQueue(handle),
 		queryFn: () => SF_GetActivePublicQueue({ data: { handle } }),
 		refetchInterval: 5_000,
+		retry: false,
 	});
 
 export function useActivePublicQueue(handle: string) {
